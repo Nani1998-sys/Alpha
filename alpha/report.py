@@ -28,7 +28,6 @@ def text_report(drug: Drug, result: SimulationResult) -> str:
                          f"({lip.get('violations', '?')} violation(s))   "
                          f"QED: {d.get('qed', '?')}")
 
-    reg = result
     lines.append("-" * 64)
     lines.append(f"Doses given at (h): {', '.join(f'{x:g}' for x in result.dose_times)}")
     lines.append(f"Concentration units: {result.conc_units}   "

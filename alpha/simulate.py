@@ -1,19 +1,26 @@
 """Orchestration: run a full PK (+ optional PD) simulation for a drug and
-compute summary exposure metrics (non-compartmental analysis, NCA).
+compute summary exposure metrics.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .models import Drug, DosingRegimen, PDParameters, PKParameters
-
-# NumPy renamed trapz -> trapezoid in 2.0; support both.
-_trapz = getattr(np, "trapezoid", None) or np.trapz
+from .models import Drug, DosingRegimen
 from .pd import simulate_pd
 from .pk import PKResult, simulate_pk
+
+
+def _sig(x: float, digits: int = 6) -> float:
+    """Round to significant figures (not decimal places), so that small
+    concentrations such as 0.000335 mg/L keep their precision."""
+    x = float(x)
+    if x == 0.0 or not math.isfinite(x):
+        return x
+    return round(x, digits - 1 - int(math.floor(math.log10(abs(x)))))
 
 
 @dataclass
@@ -43,7 +50,7 @@ class SimulationResult:
         import csv
 
         rows = self.to_rows()
-        with open(path, "w", newline="") as fh:
+        with open(path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
             writer.writeheader()
             writer.writerows(rows)
@@ -51,70 +58,71 @@ class SimulationResult:
 
 def _terminal_kel(t: np.ndarray, conc: np.ndarray) -> Optional[float]:
     """Estimate the terminal elimination rate constant by log-linear
-    regression over the terminal (post-peak, declining) phase."""
+    regression over the terminal (post-peak, declining) phase, the way
+    non-compartmental analysis does it from sampled data."""
     if len(t) < 3:
         return None
     imax = int(np.argmax(conc))
-    tail_t = t[imax:]
-    tail_c = conc[imax:]
+    tail_t, tail_c = t[imax:], conc[imax:]
     mask = tail_c > 0
     tail_t, tail_c = tail_t[mask], tail_c[mask]
     if len(tail_t) < 3:
         return None
-    # Use the last ~40% of the declining tail for the terminal slope.
-    n = len(tail_t)
-    start = max(0, int(n * 0.6))
+    start = int(len(tail_t) * 0.6)          # last ~40% of the declining tail
     xt, xc = tail_t[start:], tail_c[start:]
     if len(xt) < 2 or np.ptp(xt) == 0:
         return None
     slope, _ = np.polyfit(xt, np.log(xc), 1)
-    kel = -slope
-    return kel if kel > 0 else None
+    return -slope if slope < 0 else None
 
 
 def compute_nca(pk_result: PKResult) -> Dict[str, Any]:
-    """Non-compartmental analysis metrics from a concentration-time course."""
+    """Exposure metrics for a simulated concentration-time course.
+
+    Cmax/Tmax and AUC are read from the exact simulation. AUC_inf uses the
+    mass-balance identity AUC(0-inf) = F*Dose_total / CL, exact for linear
+    PK. ``terminal_half_life`` is the data-driven (NCA-style) estimate from
+    the terminal slope; ``model_half_life`` is the exact value from the
+    parameters (ln2/beta for two compartments, ln2/k10 for one).
+    """
     t, c = pk_result.t, pk_result.conc
+    pk, reg = pk_result.pk, pk_result.regimen
     imax = int(np.argmax(c))
-    cmax = float(c[imax])
-    tmax = float(t[imax])
-    auc_last = float(_trapz(c, t))
+
+    metrics: Dict[str, Any] = {
+        "Cmax": _sig(c[imax]),
+        "Tmax": _sig(t[imax]),
+        "AUC_last": _sig(pk_result.auc[-1]),
+        "C_last": _sig(c[-1]),
+    }
+    f_sys = pk.F if reg.route == "oral" else 1.0
+    metrics["AUC_inf"] = _sig(f_sys * reg.dose * reg.n_doses / pk.CL)
 
     kel = _terminal_kel(t, c)
-    metrics: Dict[str, Any] = {
-        "Cmax": round(cmax, 4),
-        "Tmax": round(tmax, 3),
-        "AUC_last": round(auc_last, 4),
-        "C_last": round(float(c[-1]), 4),
-    }
     if kel:
-        thalf = np.log(2) / kel
-        auc_inf = auc_last + c[-1] / kel
-        metrics.update(
-            {
-                "terminal_kel": round(kel, 5),
-                "terminal_half_life": round(thalf, 3),
-                "AUC_inf": round(auc_inf, 4),
-            }
-        )
+        metrics["terminal_kel"] = _sig(kel)
+        metrics["terminal_half_life"] = _sig(math.log(2) / kel)
 
-    # Model-based constants (exact, from parameters).
-    pk = pk_result.pk
-    mc = pk.micro_constants()
+    # Exact, parameter-based constants.
+    rates = pk.disposition_rates()
     metrics["CL"] = pk.CL
     metrics["Vc"] = pk.Vc
-    metrics["k10"] = round(mc["k10"], 5)
-    metrics["model_half_life"] = round(np.log(2) / mc["k10"], 3)
+    metrics["k10"] = _sig(pk.micro_constants()["k10"])
+    metrics["model_half_life"] = _sig(math.log(2) / rates["terminal"])
+    if rates["distribution"] is not None:
+        metrics["distribution_half_life"] = _sig(math.log(2) / rates["distribution"])
+    if reg.route == "oral" and pk.ka:
+        metrics["absorption_half_life"] = _sig(math.log(2) / pk.ka)
 
-    # Accumulation / steady-state hints for multiple dosing.
-    reg = pk_result.regimen
+    # Accumulation / steady state for multiple dosing. Accumulation is set
+    # by the slowest process: terminal disposition, or absorption if slower
+    # (flip-flop kinetics).
     if reg.n_doses > 1 and reg.interval:
-        tau = reg.interval
-        acc = 1.0 / (1.0 - np.exp(-mc["k10"] * tau))
-        metrics["accumulation_ratio"] = round(acc, 3)
-        metrics["avg_css"] = round(
-            (reg.dose * (pk.F if reg.route == "oral" else 1.0)) / (pk.CL * tau), 4
-        )
+        lam = rates["terminal"]
+        if reg.route == "oral" and pk.ka:
+            lam = min(lam, pk.ka)
+        metrics["accumulation_ratio"] = _sig(1.0 / (1.0 - math.exp(-lam * reg.interval)))
+        metrics["avg_css"] = _sig(f_sys * reg.dose / (pk.CL * reg.interval))
     return metrics
 
 
@@ -140,11 +148,12 @@ def simulate_drug(
     if drug.pd is not None and drug.pd.model != "none":
         driver, effect = simulate_pd(pk_result.t, pk_result.conc, drug.pd)
         effect_units = drug.pd.effect_units
-        metrics["Emax_observed"] = round(float(np.max(effect)), 4)
-        metrics["Emin_observed"] = round(float(np.min(effect)), 4)
-        metrics["time_of_peak_effect"] = round(
-            float(pk_result.t[int(np.argmax(effect))]), 3
-        )
+        metrics["Emax_observed"] = _sig(np.max(effect))
+        metrics["Emin_observed"] = _sig(np.min(effect))
+        # Largest departure from baseline: the peak for stimulatory models,
+        # the deepest inhibition for inhibitory ones.
+        i_peak = int(np.argmax(np.abs(effect - drug.pd.E0)))
+        metrics["time_of_peak_effect"] = _sig(pk_result.t[i_peak])
 
     return SimulationResult(
         t=pk_result.t,

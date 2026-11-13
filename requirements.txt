@@ -1,10 +1,10 @@
-# Core numerical stack (required)
+# Core numerical stack (required). The PK engine solves the model exactly
+# with a matrix exponential, so NumPy is the only hard dependency.
 numpy>=1.24
-scipy>=1.10
 
-# Chemistry: structure parsing + molecular descriptors (strongly recommended).
-# Without RDKit, Alpha still runs but structure analysis falls back to
-# formula / molecular-weight only.
+# Chemistry: full molecular descriptors (logP, TPSA, QED, drug-likeness).
+# Strongly recommended. Without RDKit, Alpha still parses structures with its
+# built-in SMILES reader (formula, molecular weight, atom and ring counts).
 rdkit>=2023.3
 
 # Plotting (optional, needed for `--plot` / plot_simulation)

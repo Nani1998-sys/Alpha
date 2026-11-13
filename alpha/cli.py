@@ -141,7 +141,7 @@ def cmd_simulate(args) -> int:
         plot_simulation(result, path=args.plot)
         print(f"Wrote plot -> {args.plot}")
     if args.json:
-        with open(args.json, "w") as fh:
+        with open(args.json, "w", encoding="utf-8") as fh:
             json.dump({"drug": drug.name, "metrics": result.metrics,
                        "rows": result.to_rows()}, fh, indent=2)
         print(f"Wrote JSON -> {args.json}")
@@ -153,14 +153,19 @@ def build_parser() -> argparse.ArgumentParser:
         prog="alpha",
         description="Alpha - in silico drug testing (PK/PD) from chemical structure",
     )
-    p.add_argument("--db", default=DEFAULT_DB, help="path to the drug database JSON")
+    db_help = "path to the drug database JSON (default: bundled library, or $ALPHA_DB)"
+    p.add_argument("--db", default=DEFAULT_DB, help=db_help)
+    # Also accept --db after the subcommand (`alpha add --db my.json ...`).
+    # SUPPRESS keeps the top-level value when it is not given here.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--db", default=argparse.SUPPRESS, help=db_help)
     sub = p.add_subparsers(dest="command", required=True)
 
     pd_ = sub.add_parser("describe", help="compute descriptors for a SMILES")
     pd_.add_argument("--smiles", required=True)
     pd_.set_defaults(func=cmd_describe)
 
-    pa = sub.add_parser("add", help="register a new drug by its structure")
+    pa = sub.add_parser("add", parents=[common], help="register a new drug by its structure")
     pa.add_argument("--name", required=True)
     pa.add_argument("--smiles", help="chemical structure (SMILES)")
     pa.add_argument("--notes", help="free-text notes")
@@ -168,14 +173,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_pk_pd_args(pa)
     pa.set_defaults(func=cmd_add)
 
-    pl = sub.add_parser("list", help="list drugs in the registry")
+    pl = sub.add_parser("list", parents=[common], help="list drugs in the registry")
     pl.set_defaults(func=cmd_list)
 
-    ps = sub.add_parser("show", help="show a drug's full record")
+    ps = sub.add_parser("show", parents=[common], help="show a drug's full record")
     ps.add_argument("--name", required=True)
     ps.set_defaults(func=cmd_show)
 
-    psim = sub.add_parser("simulate", help="simulate a dosing regimen")
+    psim = sub.add_parser("simulate", parents=[common], help="simulate a dosing regimen")
     psim.add_argument("--name", required=True)
     psim.add_argument("--dose", type=float, required=True, help="dose amount (mg)")
     psim.add_argument("--route", default="oral",

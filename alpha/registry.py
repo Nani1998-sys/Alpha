@@ -13,7 +13,16 @@ from typing import Dict, List, Optional
 from . import chem
 from .models import Drug, PDParameters, PKParameters
 
-DEFAULT_DB = os.path.join(os.path.dirname(__file__), "data", "drugs.json")
+DEFAULT_DB = os.environ.get(
+    "ALPHA_DB", os.path.join(os.path.dirname(__file__), "data", "drugs.json")
+)
+
+
+class DrugNotFoundError(KeyError):
+    """Raised when a drug name is not in the registry."""
+
+    def __str__(self) -> str:  # KeyError would wrap the message in quotes
+        return str(self.args[0])
 
 
 class DrugRegistry:
@@ -28,7 +37,7 @@ class DrugRegistry:
     def load(self) -> None:
         self._drugs = {}
         if os.path.exists(self.path):
-            with open(self.path) as fh:
+            with open(self.path, encoding="utf-8") as fh:
                 data = json.load(fh)
             for entry in data.get("drugs", []):
                 drug = Drug.from_dict(entry)
@@ -37,7 +46,7 @@ class DrugRegistry:
     def save(self) -> None:
         os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
         data = {"drugs": [d.to_dict() for d in self._drugs.values()]}
-        with open(self.path, "w") as fh:
+        with open(self.path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
 
     # ---- mutation --------------------------------------------------------
@@ -58,7 +67,8 @@ class DrugRegistry:
         key = name.lower()
         if key in self._drugs and not overwrite:
             raise ValueError(
-                f"Drug {name!r} already exists. Use overwrite=True to replace it."
+                f"Drug {name!r} already exists. To replace it, pass overwrite=True "
+                "(or --overwrite on the command line)."
             )
         descriptors: Dict = {}
         inchikey = None
@@ -101,7 +111,10 @@ class DrugRegistry:
     def get(self, name: str) -> Drug:
         key = name.lower()
         if key not in self._drugs:
-            raise KeyError(f"No drug named {name!r} in the registry")
+            known = ", ".join(self.list_names()) or "none"
+            raise DrugNotFoundError(
+                f"No drug named {name!r} in {self.path}. Available: {known}"
+            )
         return self._drugs[key]
 
     def has(self, name: str) -> bool:

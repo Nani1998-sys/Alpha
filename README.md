@@ -23,7 +23,7 @@ PK ODEs + Emax/Hill PD) and on [RDKit](https://www.rdkit.org/) for cheminformati
 
 | Capability | How |
 |---|---|
-| **Insert a new drug by chemical structure** | Give a SMILES string; Alpha parses it with RDKit and auto-computes MW, logP, TPSA, H-bond donors/acceptors, rotatable bonds, QED, InChIKey, and Lipinski/Veber drug-likeness. |
+| **Insert a new drug by chemical structure** | Give a SMILES string; Alpha parses it with RDKit and auto-computes MW, logP, TPSA, H-bond donors/acceptors, rotatable bonds, QED, InChIKey, and Lipinski/Veber drug-likeness. Invalid structures are rejected with the reason and position. |
 | **Provide PK** | Clearance + volume parameterisation: 1- or 2-compartment; IV bolus, IV infusion, or first-order oral absorption with bioavailability (F) and lag time. |
 | **Provide PD** | Emax, sigmoidal Emax (Hill), linear, log-linear, inhibitory Imax, and an optional effect-compartment (`ke0`) for delayed effect / hysteresis. |
 | **Test dosing regimens** | Single or multiple dosing; get the full concentration- and effect-time course. |
@@ -36,13 +36,15 @@ PK ODEs + Emax/Hill PD) and on [RDKit](https://www.rdkit.org/) for cheminformati
 ## Install
 
 ```bash
-pip install -r requirements.txt     # numpy, scipy, rdkit, matplotlib
+pip install -r requirements.txt     # numpy, rdkit, matplotlib
 # or, as a package:
 pip install -e .[all]
 ```
 
-Alpha runs with just `numpy` (pure-Python RK4 fallback if SciPy is absent, and a
-formula/MW-only fallback if RDKit is absent), but the full stack is recommended.
+NumPy is the only hard requirement. Without RDKit, Alpha still reads structures
+with its built-in SMILES parser (formula, molecular weight, atom and ring
+counts, validated against RDKit). Without matplotlib, everything works except
+`--plot`.
 
 ## Quick start (Python)
 
@@ -91,7 +93,9 @@ python -m alpha simulate --name Theophylline --dose 300 --route oral \
 ```
 
 A seed library of 8 well-known drugs ships in `alpha/data/drugs.json`
-(rebuild with `python scripts/build_seed_db.py`).
+(rebuild with `python scripts/build_seed_db.py`). To keep your own library
+elsewhere, pass `--db my_drugs.json` (before or after the command) or set the
+`ALPHA_DB` environment variable.
 
 ## The models (what's under the hood)
 
@@ -104,11 +108,24 @@ dA_central/dt    =  ka·A_depot + R_infusion(t) − k10·A_central − k12·A_ce
 dA_peripheral/dt =  k12·A_central − k21·A_peripheral
 ```
 
-with `k10 = CL/Vc`, `k12 = Q/Vc`, `k21 = Q/Vp`. Integration is piecewise between
-dose/infusion events (SciPy LSODA, or a built-in RK4), so bolus doses are exact
-and multiple-dose accumulation is captured. The engine is **validated in the test
-suite against the closed-form analytical solutions** for IV-bolus and oral
-one-compartment models, Tmax, and infusion steady state.
+with `k10 = CL/Vc`, `k12 = Q/Vc`, `k21 = Q/Vp`. Between doses the system is
+linear with constant input, so it is solved **exactly** with a matrix
+exponential, `[y(t+h); 1] = expm(M·h)·[y(t); 1]`, segment by segment between
+dose and infusion events. This is accurate to machine precision, stable for any
+rate constants (very fast absorption or elimination, very long simulations),
+and integrates AUC exactly. The test suite checks it against the closed-form
+solutions for IV bolus, oral (with lag time), infusion, repeat dosing and the
+two-compartment bi-exponential. The web explorer uses the identical method and
+gives the same numbers.
+
+**Exposure metrics.** Cmax and Tmax come from the simulated curve (at an IV
+bolus both the trough and the peak are recorded). `AUC_last` is exact;
+`AUC_inf = F·total dose / CL` (mass balance, exact for linear PK).
+`model_half_life` is ln 2 / β, the terminal half-life (ln 2 / k10 for one
+compartment); two-compartment drugs also report `distribution_half_life`
+(ln 2 / α). `terminal_half_life` is the curve-based estimate, the way
+non-compartmental analysis reads it from sampled data. The accumulation ratio
+uses the slowest process: β, or ka when absorption is slower (flip-flop).
 
 **Pharmacodynamics** — effect from (effect-site) concentration:
 
@@ -150,6 +167,10 @@ web/            interactive PK/PD explorer (open in a browser)
 pip install pytest
 python -m pytest -q
 ```
+
+101 tests: analytical validation of the PK engine, PD models, the SMILES parser
+(checked against RDKit on 47 real drugs, plus 17 malformed inputs it must
+reject), the drug registry and the command line.
 
 ## License
 

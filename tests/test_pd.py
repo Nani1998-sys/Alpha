@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from alpha.models import PDParameters
-from alpha.pd import effect_from_concentration, effect_site_concentration, simulate_pd
+from alpha.pd import effect_from_concentration, effect_site_concentration
 
 
 def test_emax_half_maximal_at_ec50():

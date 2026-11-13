@@ -115,6 +115,9 @@
   .chart-head h2 { margin: 0; }
   .legend { display:flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); }
   .legend i { display:inline-block; width: 22px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .legend i.dashed { background: repeating-linear-gradient(90deg, var(--sw) 0 6px, transparent 6px 10px); }
+  .status { margin-top: 10px; font-size: .84rem; color: var(--ink); border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--line)); background: color-mix(in srgb, var(--warn) 12%, var(--surface)); border-radius: 9px; padding: 8px 11px; }
+  .stale { opacity: .35; transition: opacity .15s; }
   svg.chart { width: 100%; height: auto; display: block; touch-action: none; }
   .chart-wrap { position: relative; margin-top: 6px; }
 
@@ -276,6 +279,7 @@
           <h2 id="pkTitle">Plasma concentration</h2>
           <div class="legend" id="pkLegend"></div>
         </div>
+        <div class="status" id="status" role="status" hidden></div>
         <div class="chart-wrap"><svg class="chart" id="pkChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Concentration-time curve"></svg></div>
       </div>
 
@@ -307,7 +311,9 @@
 const LIBRARY = [{"name":"Caffeine","smiles":"Cn1c(=O)c2c(ncn2C)n(C)c1=O","formula":"C8H10N4O2","mw":194.19,"logp":-1.03,"tpsa":61.82,"hbd":0,"hba":3,"qed":0.538,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":6.0,"Vc":36.0,"ka":4.0,"F":0.99,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":10,"EC50":5.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"alertness (0-10)"},"notes":"CNS stimulant. Illustrative PK (~5 h half-life)."},{"name":"Ibuprofen","smiles":"CC(C)Cc1ccc(C(C)C(=O)O)cc1","formula":"C13H18O2","mw":206.28,"logp":3.07,"tpsa":37.3,"hbd":1,"hba":1,"qed":0.822,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":3.5,"Vc":10.0,"ka":1.5,"F":0.9,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"sigmoid_emax","E0":0,"Emax":100,"EC50":10.0,"Imax":null,"IC50":null,"hill":1.5,"slope":null,"ke0":null,"effect_units":"% analgesia"},"notes":"NSAID. Short half-life (~2 h)."},{"name":"Acetaminophen","smiles":"CC(=O)Nc1ccc(O)cc1","formula":"C8H9NO2","mw":151.16,"logp":1.35,"tpsa":49.33,"hbd":2,"hba":2,"qed":0.595,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":21.0,"Vc":63.0,"ka":3.0,"F":0.88,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":8.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% antipyresis"},"notes":"Analgesic/antipyretic (paracetamol)."},{"name":"Theophylline","smiles":"Cn1c(=O)c2[nH]cnc2n(C)c1=O","formula":"C7H8N4O2","mw":180.17,"logp":-1.04,"tpsa":72.68,"hbd":1,"hba":3,"qed":0.562,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":2.8,"Vc":35.0,"ka":3.5,"F":1.0,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":10.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% bronchodilation"},"notes":"Narrow therapeutic index; target ~10-20 mg/L."},{"name":"Metformin","smiles":"CN(C)C(=N)NC(=N)N","formula":"C4H11N5","mw":129.17,"logp":-1.03,"tpsa":88.99,"hbd":4,"hba":2,"qed":0.249,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":30.0,"Vc":90.0,"ka":1.0,"F":0.55,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":40,"EC50":1.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% HGP suppression"},"notes":"Renally cleared antihyperglycemic."},{"name":"Warfarin","smiles":"CC(=O)CC(c1ccccc1)c1c(O)c2ccccc2oc1=O","formula":"C19H16O4","mw":308.33,"logp":3.61,"tpsa":67.51,"hbd":1,"hba":4,"qed":0.748,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":0.2,"Vc":8.0,"ka":1.5,"F":0.95,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"imax","E0":100,"Emax":null,"EC50":null,"Imax":70,"IC50":1.5,"hill":1.0,"slope":null,"ke0":0.02,"effect_units":"% clotting activity"},"notes":"Anticoagulant; very long half-life, delayed effect (ke0)."},{"name":"Propofol","smiles":"CC(C)c1cccc(C(C)C)c1O","formula":"C12H18O","mw":178.27,"logp":3.64,"tpsa":20.23,"hbd":1,"hba":1,"qed":0.733,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":108.0,"Vc":20.0,"ka":null,"F":1.0,"tlag":0.0,"Q":40.0,"Vp":120.0},"pd":{"model":"sigmoid_emax","E0":0,"Emax":100,"EC50":3.0,"Imax":null,"IC50":null,"hill":3,"slope":null,"ke0":0.5,"effect_units":"% hypnosis"},"notes":"IV anesthetic; two-compartment; rapid onset/offset."},{"name":"Gentamicin","smiles":"CNC1CCC(N)C(OC2OC(CN)CCC2N)C1OC1OC(C(C)(O)CO)C(O)C1NC","formula":"C21H43N5O7","mw":477.6,"logp":-3.33,"tpsa":199.73,"hbd":8,"hba":12,"qed":0.164,"lipinski_pass":false,"lipinski_viol":2,"pk":{"CL":5.4,"Vc":18.0,"ka":null,"F":1.0,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":2.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% bactericidal"},"notes":"Aminoglycoside (IV); concentration-dependent killing."}];
 
 /* ======================================================================
-   PK/PD engine (mirrors alpha/pk.py and alpha/pd.py)
+   PK engine (mirrors alpha/pk.py). Between doses the model is linear with
+   constant input, so [y(t+h); 1] = expm(M h) [y(t); 1] exactly, for any
+   rate constants. No step-size instability, and AUC is integrated exactly.
    ====================================================================== */
 function microConstants(pk){
   const k10 = pk.CL / pk.Vc;
@@ -315,23 +321,52 @@ function microConstants(pk){
   if (pk.Q != null && pk.Vp != null) { k12 = pk.Q / pk.Vc; k21 = pk.Q / pk.Vp; }
   return { k10, k12, k21 };
 }
-function rhs(y, k10, k12, k21, ka, inf){
-  const ad = y[0], ac = y[1], ap = y[2];
-  return [ -ka*ad, ka*ad + inf - k10*ac - k12*ac + k21*ap, k12*ac - k21*ap ];
+function dispositionRates(pk){
+  // One compartment: k10. Two compartments: alpha (distribution) and beta
+  // (terminal), roots of x^2 - (k10+k12+k21) x + k10 k21 = 0.
+  const { k10, k12, k21 } = microConstants(pk);
+  if (!(pk.Q != null && pk.Vp != null)) return { terminal: k10, distribution: null };
+  const s = k10 + k12 + k21;
+  const alpha = (s + Math.sqrt(Math.max(s*s - 4*k10*k21, 0))) / 2;
+  return { terminal: k10*k21/alpha, distribution: alpha };
 }
-function rk4(y, h, a){
-  const k1 = rhs(y, ...a);
-  const y2 = [y[0]+h/2*k1[0], y[1]+h/2*k1[1], y[2]+h/2*k1[2]];
-  const k2 = rhs(y2, ...a);
-  const y3 = [y[0]+h/2*k2[0], y[1]+h/2*k2[1], y[2]+h/2*k2[2]];
-  const k3 = rhs(y3, ...a);
-  const y4 = [y[0]+h*k3[0], y[1]+h*k3[1], y[2]+h*k3[2]];
-  const k4 = rhs(y4, ...a);
-  return [
-    y[0] + h/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
-    y[1] + h/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]),
-    y[2] + h/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]),
-  ];
+function matMul(A, B){
+  const n = A.length, C = [];
+  for (let i=0;i<n;i++){
+    const row = new Array(n).fill(0);
+    for (let k=0;k<n;k++){ const a = A[i][k]; if (a === 0) continue; for (let j=0;j<n;j++) row[j] += a*B[k][j]; }
+    C.push(row);
+  }
+  return C;
+}
+function matSolve(A, B){ // A X = B by Gauss-Jordan elimination with partial pivoting
+  const n = A.length, M = A.map((r,i) => r.concat(B[i]));
+  for (let c=0;c<n;c++){
+    let p = c; for (let r=c+1;r<n;r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r=0;r<n;r++){
+      if (r === c) continue;
+      const f = M[r][c] / M[c][c]; if (f === 0) continue;
+      for (let j=c;j<2*n;j++) M[r][j] -= f*M[c][j];
+    }
+  }
+  return M.map((r,i) => r.slice(n).map(v => v / M[i][i]));
+}
+const PADE6 = [1, 1/2, 5/44, 1/66, 1/792, 1/15840, 1/665280];
+function expm(A){ // scaling-and-squaring with a [6/6] Pade approximant
+  const n = A.length;
+  let norm = 0;
+  for (let j=0;j<n;j++){ let s = 0; for (let i=0;i<n;i++) s += Math.abs(A[i][j]); norm = Math.max(norm, s); }
+  const sq = norm > 0.5 ? Math.ceil(Math.log2(norm/0.5)) : 0;
+  const X = A.map(r => r.map(v => v / Math.pow(2, sq)));
+  const I = A.map((_,i) => A.map((_,j) => i === j ? 1 : 0));
+  const X2 = matMul(X,X), X4 = matMul(X2,X2), X6 = matMul(X4,X2), c = PADE6;
+  const comb = terms => I.map((_,i) => I.map((_,j) => terms.reduce((acc,[k,M]) => acc + k*M[i][j], 0)));
+  const U = matMul(X, comb([[c[1],I],[c[3],X2],[c[5],X4]]));
+  const V = comb([[c[0],I],[c[2],X2],[c[4],X4],[c[6],X6]]);
+  let E = matSolve(V.map((r,i) => r.map((v,j) => v - U[i][j])), V.map((r,i) => r.map((v,j) => v + U[i][j])));
+  for (let k=0;k<sq;k++) E = matMul(E,E);
+  return E;
 }
 function doseTimes(reg){
   const tau = reg.interval || 0, out = [];
@@ -344,36 +379,49 @@ function simulatePK(pk, reg, tEnd){
   const times = doseTimes(reg);
   const bolus = [], inf = [];
   for (const dt of times){
-    if (reg.route === "oral") bolus.push([dt + (pk.tlag||0), 0, (pk.F==null?1:pk.F)*reg.dose]);
-    else if (reg.route === "iv_bolus") bolus.push([dt, 1, reg.dose]);
-    else if (reg.route === "iv_infusion"){ const d = reg.infusion_duration||1; inf.push([dt, dt+d, reg.dose/d]); }
+    if (reg.route === "oral") bolus.push([dt + (pk.tlag||0), 0, pk.F*reg.dose]);   // -> depot
+    else if (reg.route === "iv_bolus") bolus.push([dt, 1, reg.dose]);              // -> central
+    else { const d = reg.infusion_duration; inf.push([dt, dt+d, reg.dose/d]); }
   }
   const bpset = new Set([0, tEnd]);
   bolus.forEach(b => { if (b[0] <= tEnd) bpset.add(b[0]); });
   inf.forEach(w => { if (w[0] <= tEnd) bpset.add(w[0]); if (w[1] <= tEnd) bpset.add(w[1]); });
-  const bps = [...bpset].filter(b => b>=0 && b<=tEnd).sort((a,b)=>a-b);
-  const infAt = tm => inf.reduce((s,w)=> (w[0] <= tm && tm < w[1]) ? s + w[2] : s, 0);
+  const bps = [...bpset].filter(b => b >= 0 && b <= tEnd).sort((a,b) => a-b);
+  const infAt = tm => inf.reduce((s,w) => (w[0] <= tm && tm < w[1]) ? s + w[2] : s, 0);
 
-  let y = [0,0,0];
-  const T = [], CEN = [];
-  const N = 2400;
-  const baseStep = Math.max(tEnd / N, 1e-4);
-
+  const N = 2000;
+  let y = [0,0,0,0,1];                       // depot, central, peripheral, AUC, 1
+  const T = [], C = [], AUC = [];
   for (let i=0;i<bps.length-1;i++){
     const t0 = bps[i], t1 = bps[i+1];
-    for (const b of bolus) if (Math.abs(b[0]-t0) < 1e-9) y[b[1]] += b[2];
-    if (T.length === 0){ T.push(t0); CEN.push(y[1]); }
-    const rate = infAt((t0+t1)/2);
-    const args = [k10, k12, k21, ka, rate];
-    const span = t1 - t0;
-    const nsteps = Math.max(1, Math.ceil(span / baseStep));
-    const h = span / nsteps;
-    let tc = t0;
-    for (let s=0;s<nsteps;s++){ y = rk4(y, h, args); tc += h; T.push(tc); CEN.push(Math.max(0,y[1])); }
+    let jump = false;
+    for (const b of bolus) if (Math.abs(b[0]-t0) < 1e-9){ y[b[1]] += b[2]; if (b[1] === 1) jump = true; }
+    const npts = Math.max(3, Math.round(N*(t1-t0)/tEnd) + 2), h = (t1-t0)/(npts-1);
+    const r = infAt((t0+t1)/2);
+    const P = expm([
+      [-ka, 0, 0, 0, 0],
+      [ka, -(k10+k12), k21, 0, r],
+      [0, k12, -k21, 0, 0],
+      [0, 1/pk.Vc, 0, 0, 0],
+      [0, 0, 0, 0, 0],
+    ].map(row => row.map(v => v*h)));
+    P[4] = [0,0,0,0,1];
+    // A bolus into the central compartment makes C jump: keep both the
+    // pre-dose (already recorded) and the post-dose value at t0.
+    if (T.length === 0 || jump){ T.push(t0); C.push(Math.max(0,y[1])/pk.Vc); AUC.push(y[3]); }
+    for (let j=1;j<npts;j++){
+      const ny = [0,0,0,0,0];
+      for (let a=0;a<5;a++){ let s = 0; for (let k=0;k<5;k++) s += P[a][k]*y[k]; ny[a] = s; }
+      y = ny;
+      T.push(j === npts-1 ? t1 : t0 + j*h); C.push(Math.max(0,y[1])/pk.Vc); AUC.push(y[3]);
+    }
   }
-  const conc = CEN.map(a => Math.max(0,a) / pk.Vc);
-  return { t: T, conc, doseTimes: times, k10 };
+  return { t: T, conc: C, auc: AUC, doseTimes: times };
 }
+
+/* ======================================================================
+   PD (mirrors alpha/pd.py)
+   ====================================================================== */
 function effectSite(t, conc, ke0){
   const ce = new Array(conc.length).fill(0);
   for (let i=1;i<t.length;i++){
@@ -398,201 +446,329 @@ function effectVal(c, pd){
 }
 function simulatePD(t, conc, pd){
   if (!pd || pd.model === "none") return null;
-  const driver = (pd.ke0 != null && pd.ke0 > 0) ? effectSite(t, conc, pd.ke0) : conc;
+  const driver = pd.ke0 ? effectSite(t, conc, pd.ke0) : conc;
   return { driver, effect: driver.map(c => effectVal(c, pd)) };
 }
-function trapz(y, x){ let s=0; for (let i=1;i<y.length;i++) s += (y[i]+y[i-1])/2*(x[i]-x[i-1]); return s; }
+
+/* ======================================================================
+   Exposure metrics (mirrors alpha/simulate.py)
+   ====================================================================== */
+const isInhibitory = pd => pd.model === "imax" || pd.model === "sigmoid_imax";
+function maxOf(a){ let m = -Infinity; for (const v of a) if (v > m) m = v; return m; }
+function minOf(a){ let m = Infinity; for (const v of a) if (v < m) m = v; return m; }
 function terminalKel(t, c){
-  if (t.length < 3) return null;
   let imax = 0; for (let i=1;i<c.length;i++) if (c[i] > c[imax]) imax = i;
   const tt = [], cc = [];
-  for (let i=imax;i<t.length;i++){ if (c[i] > 0){ tt.push(t[i]); cc.push(c[i]); } }
+  for (let i=imax;i<t.length;i++) if (c[i] > 0){ tt.push(t[i]); cc.push(c[i]); }
   if (tt.length < 3) return null;
-  const start = Math.max(0, Math.floor(tt.length*0.6));
-  const xs = tt.slice(start), ys = cc.slice(start).map(Math.log);
-  if (xs.length < 2) return null;
-  const n = xs.length;
+  const start = Math.floor(tt.length*0.6);
+  const xs = tt.slice(start), ys = cc.slice(start).map(Math.log), n = xs.length;
+  if (n < 2) return null;
   let sx=0, sy=0, sxx=0, sxy=0;
   for (let i=0;i<n;i++){ sx+=xs[i]; sy+=ys[i]; sxx+=xs[i]*xs[i]; sxy+=xs[i]*ys[i]; }
-  const denom = n*sxx - sx*sx; if (denom === 0) return null;
-  const slope = (n*sxy - sx*sy)/denom;
+  const den = n*sxx - sx*sx; if (den === 0) return null;
+  const slope = (n*sxy - sx*sy)/den;
   return slope < 0 ? -slope : null;
 }
-function computeMetrics(pkres, pdres, pk, reg){
+function computeMetrics(pkres, pdres, pk, reg, pd){
   const { t, conc } = pkres;
   let imax = 0; for (let i=1;i<conc.length;i++) if (conc[i] > conc[imax]) imax = i;
-  const m = { Cmax: conc[imax], Tmax: t[imax], AUC_last: trapz(conc, t), C_last: conc[conc.length-1] };
+  const Fs = reg.route === "oral" ? pk.F : 1;
+  const m = { Cmax: conc[imax], Tmax: t[imax], AUC_last: pkres.auc[pkres.auc.length-1],
+              AUC_inf: Fs*reg.dose*reg.n_doses/pk.CL, C_last: conc[conc.length-1] };
   const kel = terminalKel(t, conc);
-  if (kel){ m.half_life = Math.log(2)/kel; m.AUC_inf = m.AUC_last + conc[conc.length-1]/kel; }
-  m.model_half_life = Math.log(2)/pkres.k10;
+  if (kel) m.half_life = Math.LN2/kel;
+  const rates = dispositionRates(pk);
+  m.model_half_life = Math.LN2/rates.terminal;
+  if (rates.distribution) m.distribution_half_life = Math.LN2/rates.distribution;
   if (reg.n_doses > 1 && reg.interval > 0){
-    m.accumulation = 1/(1-Math.exp(-pkres.k10*reg.interval));
-    const F = reg.route === "oral" ? (pk.F==null?1:pk.F) : 1;
-    m.avg_css = F*reg.dose/(pk.CL*reg.interval);
+    let lam = rates.terminal;
+    if (reg.route === "oral" && pk.ka) lam = Math.min(lam, pk.ka);   // flip-flop
+    m.accumulation = 1/(1-Math.exp(-lam*reg.interval));
+    m.avg_css = Fs*reg.dose/(pk.CL*reg.interval);
   }
-  if (pdres){ m.peak_effect = Math.max(...pdres.effect); m.min_effect = Math.min(...pdres.effect); }
+  if (pdres){
+    if (isInhibitory(pd)){ m.nadir_effect = minOf(pdres.effect); m.max_inhibition = pd.E0 - m.nadir_effect; }
+    else m.peak_effect = maxOf(pdres.effect);
+  }
   return m;
 }
 
 /* ======================================================================
-   SMILES -> molecular formula / weight (heavy atoms; no RDKit in-browser)
+   SMILES reader (mirrors alpha/chem.py parse_smiles): validates the
+   structure and adds implicit hydrogens by the OpenSMILES valence rules.
    ====================================================================== */
-const ATOMIC = { H:1.008,B:10.811,C:12.011,N:14.007,O:15.999,F:18.998,P:30.974,S:32.06,Cl:35.45,Br:79.904,I:126.904,Na:22.990,K:39.098,Si:28.085,Se:78.971 };
+const ATOMIC_WEIGHT = { H:1.008, He:4.003, Li:6.941, Be:9.012, B:10.812, C:12.011, N:14.007, O:15.999, F:18.998, Ne:20.18,
+  Na:22.99, Mg:24.305, Al:26.982, Si:28.086, P:30.974, S:32.067, Cl:35.453, Ar:39.948, K:39.098, Ca:40.078, Ti:47.867,
+  V:50.942, Cr:51.996, Mn:54.938, Fe:55.845, Co:58.933, Ni:58.693, Cu:63.546, Zn:65.39, Ga:69.723, Ge:72.61, As:74.922,
+  Se:78.96, Br:79.904, Kr:83.8, Rb:85.468, Sr:87.62, Zr:91.224, Mo:95.94, Tc:98, Ru:101.07, Rh:102.906, Pd:106.42,
+  Ag:107.868, Cd:112.412, In:114.818, Sn:118.711, Sb:121.76, Te:127.6, I:126.904, Xe:131.29, Cs:132.905, Ba:137.328,
+  La:138.906, Gd:157.25, Pt:195.078, Au:196.967, Hg:200.59, Tl:204.383, Pb:207.2, Bi:208.98, "*":0 };
+const ORGANIC_VALENCE = { B:[3], C:[4], N:[3,5], O:[2], P:[3,5], S:[2,4,6], F:[1], Cl:[1], Br:[1], I:[1], "*":[] };
+const AROMATIC_SYMBOLS = { b:"B", c:"C", n:"N", o:"O", p:"P", s:"S", se:"Se", as:"As", te:"Te" };
+const BOND_ORDER = { "-":1, "=":2, "#":3, "$":4, ":":1.5, "/":1, "\\":1 };
+const BRACKET_RE = /^(\d+)?(\*|[A-Z][a-z]?|se|as|te|[bcnops])(@@?(?:TH[12]|AL[12]|SP[123]|TB\d{1,2}|OH\d{1,2})?)?(H\d*)?([+-]\d+|\++|-+)?(:\d+)?$/;
+const ISOTOPE_MASS = { H1: 1.008, H2: 2.014, H3: 3.016 };
+class SmilesError extends Error {}
+
 function parseSmiles(smiles){
-  if (!smiles || !smiles.trim()) return null;
-  let s = smiles.trim();
-  const counts = {};
-  const add = (el,n=1) => { if (ATOMIC[el] != null) counts[el] = (counts[el]||0)+n; };
-  // bracket atoms [....]
-  const brk = /\[(\d*)([A-Z][a-z]?)([^\]]*)\]/g; let mm;
-  while ((mm = brk.exec(s))) add(mm[2]);
-  s = s.replace(brk, "");
-  for (const el of ["Cl","Br"]){ let n=0; while (s.includes(el)){ s = s.replace(el,""); n++; } if (n) add(el,n); }
-  const arom = { c:"C", n:"N", o:"O", s:"S", p:"P", b:"B" };
-  for (const ch of s){ if (/[A-Za-z]/.test(ch)){ const el = arom[ch] || (ch===ch.toLowerCase()?ch.toUpperCase():ch); add(el); } }
-  const heavy = Object.entries(counts).filter(([e])=>e!=="H").reduce((a,[,n])=>a+n,0);
-  if (heavy === 0) return null;
-  const mw = Object.entries(counts).reduce((a,[e,n])=>a+ATOMIC[e]*n,0);
-  const order = ["C","H","N","O","F","P","S","Cl","Br","I"];
-  const els = Object.keys(counts).sort((a,b)=>{
-    const ia = order.indexOf(a), ib = order.indexOf(b);
-    return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b);
+  const s = (smiles || "").trim();
+  if (!s) throw new SmilesError("Empty structure");
+  const atoms = [], bonds = [], branch = [], rings = new Map();
+  let prev = null, pending = null, i = 0;
+  const n = s.length;
+  const fail = msg => { throw new SmilesError(`${msg} (at position ${i+1})`); };
+  const addBond = (a, b, sym) => {
+    if (a === b) fail("an atom cannot bond to itself");
+    if (bonds.some(x => (x[0] === a && x[1] === b) || (x[0] === b && x[1] === a))) fail("duplicate bond between the same two atoms");
+    const implicitArom = sym == null && atoms[a].aromatic && atoms[b].aromatic;
+    bonds.push([a, b, sym == null ? (implicitArom ? 1.5 : 1) : BOND_ORDER[sym], implicitArom]);
+  };
+  const addAtom = atom => {
+    atoms.push(atom);
+    const idx = atoms.length - 1;
+    if (prev !== null) addBond(prev, idx, pending);
+    else if (pending !== null) fail("bond symbol with no atom before it");
+    prev = idx; pending = null;
+  };
+  while (i < n){
+    const ch = s[i];
+    if (ch === "["){
+      const j = s.indexOf("]", i);
+      if (j < 0) fail("unclosed '['");
+      const m = BRACKET_RE.exec(s.slice(i+1, j));
+      if (!m) fail(`malformed bracket atom [${s.slice(i+1, j)}]`);
+      const sym = m[2], aromatic = sym in AROMATIC_SYMBOLS, el = AROMATIC_SYMBOLS[sym] || sym;
+      if (!(el in ATOMIC_WEIGHT)) fail(`unknown element '${sym}'`);
+      const hg = m[4], cg = m[5] || "";
+      const h = !hg ? 0 : (hg.length > 1 ? parseInt(hg.slice(1), 10) : 1);
+      const sign = cg[0] === "+" ? 1 : -1;
+      const charge = !cg ? 0 : (/\d/.test(cg) ? sign*parseInt(cg.slice(1), 10) : sign*cg.length);
+      addAtom({ el, aromatic, bracket: true, h, charge, isotope: m[1] ? parseInt(m[1], 10) : null });
+      i = j + 1;
+    } else if (s.startsWith("Cl", i) || s.startsWith("Br", i)){
+      addAtom({ el: s.slice(i, i+2), aromatic: false, bracket: false, charge: 0 }); i += 2;
+    } else if ("BCNOPSFI*".includes(ch)){
+      addAtom({ el: ch, aromatic: false, bracket: false, charge: 0 }); i += 1;
+    } else if ("bcnops".includes(ch)){
+      addAtom({ el: ch.toUpperCase(), aromatic: true, bracket: false, charge: 0 }); i += 1;
+    } else if (ch in BOND_ORDER){
+      if (pending !== null) fail("two bond symbols in a row");
+      if (prev === null) fail("bond symbol with no atom before it");
+      pending = ch; i += 1;
+    } else if (ch === "("){
+      if (prev === null) fail("branch '(' with no atom before it");
+      if (s[i+1] === ")") fail("empty branch '()'");
+      branch.push(prev); i += 1;
+    } else if (ch === ")"){
+      if (!branch.length) fail("unbalanced ')'");
+      if (pending !== null) fail("bond symbol at the end of a branch");
+      prev = branch.pop(); i += 1;
+    } else if (/[0-9%]/.test(ch)){
+      if (prev === null) fail("ring-closure digit with no atom before it");
+      let label;
+      if (ch === "%"){
+        label = s.slice(i+1, i+3);
+        if (!/^\d\d$/.test(label)) fail("'%' must be followed by two digits");
+        i += 3;
+      } else { label = ch; i += 1; }
+      if (rings.has(label)){
+        const [other, sym0] = rings.get(label);
+        rings.delete(label);
+        if (pending && sym0 && pending !== sym0) fail(`conflicting bond orders on ring closure ${label}`);
+        addBond(other, prev, pending || sym0);
+      } else rings.set(label, [prev, pending]);
+      pending = null;
+    } else if (ch === "."){
+      if (pending !== null) fail("bond symbol before '.'");
+      if (prev === null) fail("'.' with no atom before it");
+      prev = null; i += 1;
+    } else fail(`unexpected character '${ch}'`);
+  }
+  if (pending !== null) fail("structure ends with a bond symbol");
+  if (branch.length) fail("unclosed branch '('");
+  if (rings.size) fail(`unclosed ring bond(s): ${[...rings.keys()].sort().join(", ")}`);
+  if (!atoms.length) fail("no atoms found");
+
+  // A bond lies on a ring iff its ends stay connected without it. Unwritten
+  // bonds between aromatic atoms are aromatic only inside a ring.
+  const connectedWithout = skip => {
+    const parent = atoms.map((_, k) => k);
+    const find = x => { while (parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    bonds.forEach((b, k) => { if (k !== skip) parent[find(b[0])] = find(b[1]); });
+    return find(bonds[skip][0]) === find(bonds[skip][1]);
+  };
+  const inRing = bonds.map((_, k) => connectedWithout(k));
+  bonds.forEach((b, k) => { if (b[3] && !inRing[k]) b[2] = 1; });
+  const vsum = atoms.map(() => 0), ringBonds = atoms.map(() => 0);
+  bonds.forEach(([a, b, o], k) => { vsum[a] += o; vsum[b] += o; if (inRing[k]){ ringBonds[a]++; ringBonds[b]++; } });
+  atoms.forEach((at, k) => {
+    if (at.aromatic && ringBonds[k] < 2) fail(`aromatic atom '${at.el.toLowerCase()}' is not in a ring`);
+    if (at.bracket) return;
+    const allowed = ORGANIC_VALENCE[at.el] || [];
+    const used = vsum[k];
+    const target = at.aromatic ? allowed[0] : allowed.find(v => v >= used - 1e-9);
+    at.h = target ? Math.max(0, Math.floor(target - used + 1e-9)) : 0;
   });
-  const formula = els.map(e => e + (counts[e]>1?counts[e]:"")).join("");
-  return { formula, mw, heavy, counts };
+  return { atoms, bonds };
+}
+function analyzeSmiles(smiles){
+  const mol = parseSmiles(smiles);
+  const counts = {};
+  let mw = 0, charge = 0;
+  for (const a of mol.atoms){
+    counts[a.el] = (counts[a.el] || 0) + 1;
+    mw += a.isotope ? (ISOTOPE_MASS[a.el + a.isotope] ?? a.isotope) : ATOMIC_WEIGHT[a.el];
+    if (a.h){ counts.H = (counts.H || 0) + a.h; mw += a.h*ATOMIC_WEIGHT.H; }
+    charge += a.charge || 0;
+  }
+  const parent = mol.atoms.map((_, k) => k);
+  const find = x => { while (parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+  mol.bonds.forEach(b => { parent[find(b[0])] = find(b[1]); });
+  const components = new Set(mol.atoms.map((_, k) => find(k))).size;
+  const order = ["C","H"].filter(e => e in counts)
+    .concat(Object.keys(counts).filter(e => !["C","H","*"].includes(e)).sort());
+  let formula = order.map(e => e + (counts[e] > 1 ? counts[e] : "")).join("");
+  if (charge) formula += (charge > 0 ? "+" : "-") + (Math.abs(charge) > 1 ? Math.abs(charge) : "");
+  return { formula, mw, heavy: mol.atoms.filter(a => a.el !== "H" && a.el !== "*").length,
+           rings: mol.bonds.length - mol.atoms.length + components, charge };
 }
 
 /* ======================================================================
-   SVG line charts (theme-aware, crosshair hover)
+   SVG line charts (colors are CSS variables, so they follow the theme)
    ====================================================================== */
-function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-function niceMax(v){
-  if (v <= 0) return 1;
-  const exp = Math.floor(Math.log10(v)), f = v/Math.pow(10,exp);
-  const nf = f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10;
-  return nf*Math.pow(10,exp);
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, style){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (style) e.setAttribute("style", style);
+  return e;
 }
-function fmt(v){
+function niceNum(x){ // round up to 1, 2, 2.5 or 5 x 10^k
+  if (!(x > 0)) return 1;
+  const e = Math.floor(Math.log10(x)), f = x / Math.pow(10, e);
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * Math.pow(10, e);
+}
+function decimalsFor(step){
+  const s = String(+step.toPrecision(12));
+  return s.includes("e-") ? parseInt(s.split("e-")[1], 10) : (s.split(".")[1] || "").length;
+}
+function tickLabel(v, dec){
+  if (Math.abs(v) < 1e-12) return "0";
+  return dec > 5 ? v.toExponential(1) : v.toFixed(dec);
+}
+function fmtMetric(v){ // 3 significant figures, trailing zeros dropped
   if (v === 0) return "0";
   const a = Math.abs(v);
-  if (a >= 1000) return v.toFixed(0);
-  if (a >= 100) return v.toFixed(0);
-  if (a >= 10) return v.toFixed(1);
-  if (a >= 1) return v.toFixed(2);
-  if (a >= 0.01) return v.toFixed(3);
-  return v.toExponential(1);
+  if (a >= 1e5 || a < 1e-4) return v.toExponential(2);
+  return String(Number(v.toPrecision(3)));
 }
-const NS = "http://www.w3.org/2000/svg";
-function el(tag, attrs){ const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
 
 function drawChart(svg, cfg){
-  // cfg: { t, series:[{y,color,label}], yLabel, xLabel, doseTimes, band, tUnits }
-  const W = 720, H = 300;
-  const padL = 56, padR = 16, padT = 14, padB = 40;
+  // cfg: { t, series:[{y, color, short, dash?}], yLabel, xLabel, doseTimes, band, tUnits }
+  const W = 720, H = 300, padL = 60, padR = 16, padT = 14, padB = 40;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const t = cfg.t, tMax = t[t.length-1] || 1;
 
-  const ink = cssVar("--ink"), muted = cssVar("--muted"), line = cssVar("--line");
-  const t = cfg.t;
-  const tMax = t[t.length-1] || 1;
-  let yMaxRaw = 0, yMinRaw = 0;
-  cfg.series.forEach(s => s.y.forEach(v => { if (v>yMaxRaw) yMaxRaw=v; if (v<yMinRaw) yMinRaw=v; }));
-  if (cfg.band){ if (cfg.band[1]>yMaxRaw) yMaxRaw = cfg.band[1]; }
-  let yMax = niceMax(yMaxRaw || 1);
-  let yMin = yMinRaw < 0 ? -niceMax(-yMinRaw) : 0;
-  if (yMax === yMin) yMax = yMin + 1;
+  let lo = 0, hi = -Infinity;
+  cfg.series.forEach(s => s.y.forEach(v => { if (isFinite(v)){ if (v > hi) hi = v; if (v < lo) lo = v; } }));
+  if (cfg.band) hi = Math.max(hi, cfg.band[1]);
+  if (!(hi > lo)) hi = lo + 1;
+  const ystep = niceNum((hi - lo) / 5);
+  const yMin = Math.floor(lo / ystep) * ystep, yMax = Math.ceil(hi / ystep) * ystep;
+  const X = v => padL + (v / tMax) * (W - padL - padR);
+  const Y = v => H - padB - ((v - yMin) / (yMax - yMin)) * (H - padT - padB);
+  const mono = "font-family:var(--font-mono);fill:var(--muted)";
 
-  const X = v => padL + (v/tMax)*(W-padL-padR);
-  const Y = v => H-padB - ((v-yMin)/(yMax-yMin))*(H-padT-padB);
-
-  // grid + y ticks
-  const yticks = 5;
-  for (let i=0;i<=yticks;i++){
-    const val = yMin + (yMax-yMin)*i/yticks;
-    const yy = Y(val);
-    svg.appendChild(el("line",{x1:padL,y1:yy,x2:W-padR,y2:yy,stroke:line,"stroke-width":1}));
-    const tx = el("text",{x:padL-8,y:yy+3.5,"text-anchor":"end","font-size":11,fill:muted,"font-family":"var(--font-mono)"});
-    tx.textContent = fmt(val); svg.appendChild(tx);
+  const ydec = decimalsFor(ystep);
+  for (let k = 0; k <= Math.round((yMax - yMin) / ystep); k++){
+    const val = yMin + k*ystep, yy = Y(val);
+    svg.appendChild(el("line", {x1:padL, y1:yy, x2:W-padR, y2:yy, "stroke-width":1}, "stroke:var(--line)"));
+    const tx = el("text", {x:padL-8, y:yy+3.5, "text-anchor":"end", "font-size":11}, mono);
+    tx.textContent = tickLabel(val, ydec); svg.appendChild(tx);
   }
-  // x ticks
-  const xticks = 6;
-  for (let i=0;i<=xticks;i++){
-    const val = tMax*i/xticks, xx = X(val);
-    svg.appendChild(el("line",{x1:xx,y1:H-padB,x2:xx,y2:H-padB+4,stroke:muted,"stroke-width":1}));
-    const tx = el("text",{x:xx,y:H-padB+16,"text-anchor":"middle","font-size":11,fill:muted,"font-family":"var(--font-mono)"});
-    tx.textContent = fmt(val); svg.appendChild(tx);
+  const xstep = niceNum(tMax / 6), xdec = decimalsFor(xstep);
+  for (let k = 0; k*xstep <= tMax*(1+1e-9); k++){
+    const val = k*xstep, xx = X(val);
+    svg.appendChild(el("line", {x1:xx, y1:H-padB, x2:xx, y2:H-padB+4, "stroke-width":1}, "stroke:var(--muted)"));
+    const tx = el("text", {x:xx, y:H-padB+16, "text-anchor":"middle", "font-size":11}, mono);
+    tx.textContent = tickLabel(val, xdec); svg.appendChild(tx);
   }
-  // axis labels
-  const xl = el("text",{x:(padL+W-padR)/2,y:H-4,"text-anchor":"middle","font-size":11.5,fill:muted}); xl.textContent = cfg.xLabel; svg.appendChild(xl);
-  const yl = el("text",{x:14,y:(padT+H-padB)/2,"text-anchor":"middle","font-size":11.5,fill:muted,transform:`rotate(-90 14 ${(padT+H-padB)/2})`}); yl.textContent = cfg.yLabel; svg.appendChild(yl);
+  const xl = el("text", {x:(padL+W-padR)/2, y:H-4, "text-anchor":"middle", "font-size":11.5}, "fill:var(--muted)");
+  xl.textContent = cfg.xLabel; svg.appendChild(xl);
+  const ym = (padT+H-padB)/2;
+  const yl = el("text", {x:14, y:ym, "text-anchor":"middle", "font-size":11.5, transform:`rotate(-90 14 ${ym})`}, "fill:var(--muted)");
+  yl.textContent = cfg.yLabel; svg.appendChild(yl);
 
-  // therapeutic band
   if (cfg.band){
     const y1 = Y(Math.min(cfg.band[1], yMax)), y0 = Y(Math.max(cfg.band[0], yMin));
-    svg.appendChild(el("rect",{x:padL,y:y1,width:W-padL-padR,height:Math.max(0,y0-y1),fill:cssVar("--band")}));
+    svg.appendChild(el("rect", {x:padL, y:y1, width:W-padL-padR, height:Math.max(0, y0-y1)}, "fill:var(--band)"));
   }
-  // baseline at y=0 if in range
-  if (yMin < 0){ const z = Y(0); svg.appendChild(el("line",{x1:padL,y1:z,x2:W-padR,y2:z,stroke:muted,"stroke-width":1,"stroke-dasharray":"2 3"})); }
-
-  // dose markers
-  if (cfg.doseTimes) cfg.doseTimes.forEach(dt => {
-    if (dt <= tMax){ const xx = X(dt); svg.appendChild(el("line",{x1:xx,y1:padT,x2:xx,y2:H-padB,stroke:muted,"stroke-width":1,"stroke-dasharray":"2 4",opacity:.5})); }
+  if (yMin < 0){
+    const z = Y(0);
+    svg.appendChild(el("line", {x1:padL, y1:z, x2:W-padR, y2:z, "stroke-width":1, "stroke-dasharray":"2 3"}, "stroke:var(--muted)"));
+  }
+  (cfg.doseTimes || []).forEach(dt => {
+    if (dt <= tMax){
+      const xx = X(dt);
+      svg.appendChild(el("line", {x1:xx, y1:padT, x2:xx, y2:H-padB, "stroke-width":1, "stroke-dasharray":"2 4", opacity:.5}, "stroke:var(--muted)"));
+    }
   });
-
-  // series lines
   cfg.series.forEach(s => {
-    let d = "";
-    for (let i=0;i<t.length;i++){ d += (i===0?"M":"L") + X(t[i]).toFixed(1) + " " + Y(s.y[i]).toFixed(1) + " "; }
-    svg.appendChild(el("path",{d,fill:"none",stroke:s.color,"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"}));
+    let d = "", pen = false;
+    for (let i=0;i<t.length;i++){
+      const v = s.y[i];
+      if (!isFinite(v)){ pen = false; continue; }
+      d += (pen ? "L" : "M") + X(t[i]).toFixed(1) + " " + Y(v).toFixed(1) + " ";
+      pen = true;
+    }
+    const attrs = {d, fill:"none", "stroke-width":2, "stroke-linejoin":"round", "stroke-linecap":"round"};
+    if (s.dash) attrs["stroke-dasharray"] = s.dash;
+    svg.appendChild(el("path", attrs, `stroke:${s.color}`));
   });
 
-  // hover layer
-  const hoverLine = el("line",{x1:0,y1:padT,x2:0,y2:H-padB,stroke:ink,"stroke-width":1,opacity:0});
+  // hover layer: crosshair, dots and a value tooltip
+  const hoverLine = el("line", {x1:0, y1:padT, x2:0, y2:H-padB, "stroke-width":1, opacity:0}, "stroke:var(--ink)");
   svg.appendChild(hoverLine);
-  const dots = cfg.series.map(s => { const c = el("circle",{r:3.5,fill:s.color,stroke:cssVar("--surface"),"stroke-width":1.5,opacity:0}); svg.appendChild(c); return c; });
-  const tip = el("g",{opacity:0});
-  const tipBg = el("rect",{rx:6,fill:cssVar("--surface"),stroke:line,"stroke-width":1,width:120,height:20});
-  tip.appendChild(tipBg);
-  const tipText = el("text",{"font-size":11,fill:ink,"font-family":"var(--font-mono)"});
-  tip.appendChild(tipText);
-  svg.appendChild(tip);
+  const dots = cfg.series.map(s => { const c = el("circle", {r:3.5, "stroke-width":1.5, opacity:0}, `fill:${s.color};stroke:var(--surface)`); svg.appendChild(c); return c; });
+  const tip = el("g", {opacity:0});
+  const tipBg = el("rect", {rx:6, "stroke-width":1, width:120, height:20}, "fill:var(--surface);stroke:var(--line)");
+  const tipText = el("text", {"font-size":11}, "font-family:var(--font-mono);fill:var(--ink)");
+  tip.appendChild(tipBg); tip.appendChild(tipText); svg.appendChild(tip);
+  const hit = el("rect", {x:padL, y:padT, width:W-padL-padR, height:H-padT-padB, fill:"transparent"});
+  svg.appendChild(hit);
 
-  const rect = el("rect",{x:padL,y:padT,width:W-padL-padR,height:H-padT-padB,fill:"transparent"});
-  svg.appendChild(rect);
-
-  function toLocal(evt){
-    const pt = svg.createSVGPoint();
-    const src = evt.touches ? evt.touches[0] : evt;
-    pt.x = src.clientX; pt.y = src.clientY;
-    const ctm = svg.getScreenCTM().inverse();
-    return pt.matrixTransform(ctm);
-  }
   function move(evt){
     evt.preventDefault();
-    const loc = toLocal(evt);
+    const src = evt.touches ? evt.touches[0] : evt;
+    const pt = svg.createSVGPoint(); pt.x = src.clientX; pt.y = src.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
     const tv = Math.max(0, Math.min(tMax, (loc.x - padL)/(W-padL-padR)*tMax));
-    // nearest index
-    let lo=0, hi=t.length-1;
-    while (hi-lo>1){ const mid=(lo+hi)>>1; if (t[mid] < tv) lo=mid; else hi=mid; }
-    const idx = (tv - t[lo]) < (t[hi]-tv) ? lo : hi;
-    const xx = X(t[idx]);
-    hoverLine.setAttribute("x1",xx); hoverLine.setAttribute("x2",xx); hoverLine.setAttribute("opacity",.45);
-    const lines = [`t = ${fmt(t[idx])} ${cfg.tUnits}`];
-    cfg.series.forEach((s,i) => { dots[i].setAttribute("cx",xx); dots[i].setAttribute("cy",Y(s.y[idx])); dots[i].setAttribute("opacity",1); lines.push(`${s.short}: ${fmt(s.y[idx])}`); });
+    let lo2 = 0, hi2 = t.length-1;
+    while (hi2 - lo2 > 1){ const mid = (lo2+hi2) >> 1; if (t[mid] < tv) lo2 = mid; else hi2 = mid; }
+    const idx = (tv - t[lo2]) < (t[hi2] - tv) ? lo2 : hi2, xx = X(t[idx]);
+    hoverLine.setAttribute("x1", xx); hoverLine.setAttribute("x2", xx); hoverLine.setAttribute("opacity", .45);
+    const lines = [`t = ${fmtMetric(t[idx])} ${cfg.tUnits}`];
+    cfg.series.forEach((s,i) => {
+      dots[i].setAttribute("cx", xx); dots[i].setAttribute("cy", Y(s.y[idx])); dots[i].setAttribute("opacity", 1);
+      lines.push(`${s.short}: ${fmtMetric(s.y[idx])}`);
+    });
     while (tipText.firstChild) tipText.removeChild(tipText.firstChild);
-    lines.forEach((ln,i) => { const ts = el("tspan",{x:0,dy:i===0?0:13}); ts.textContent = ln; tipText.appendChild(ts); });
-    const bw = 130, bh = 16 + lines.length*13;
-    let bx = xx + 10; if (bx + bw > W-padR) bx = xx - bw - 10;
+    lines.forEach((ln,i) => { const ts = el("tspan", {x:0, dy: i === 0 ? 0 : 13}); ts.textContent = ln; tipText.appendChild(ts); });
+    const bw = 132, bh = 16 + lines.length*13;
+    let bx = xx + 10; if (bx + bw > W - padR) bx = xx - bw - 10;
     const by = padT + 6;
-    tipBg.setAttribute("width",bw); tipBg.setAttribute("height",bh); tipBg.setAttribute("x",bx); tipBg.setAttribute("y",by);
-    tipText.setAttribute("x",bx+9); tipText.setAttribute("y",by+15);
-    tip.setAttribute("opacity",1);
+    tipBg.setAttribute("width", bw); tipBg.setAttribute("height", bh); tipBg.setAttribute("x", bx); tipBg.setAttribute("y", by);
+    tipText.setAttribute("x", bx+9); tipText.setAttribute("y", by+15);
+    tipText.querySelectorAll("tspan").forEach(ts => ts.setAttribute("x", bx+9));
+    tip.setAttribute("opacity", 1);
   }
-  function leave(){ hoverLine.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0)); tip.setAttribute("opacity",0); }
-  rect.addEventListener("mousemove", move);
-  rect.addEventListener("mouseleave", leave);
-  rect.addEventListener("touchmove", move, {passive:false});
-  rect.addEventListener("touchend", leave);
+  function leave(){ hoverLine.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); tip.setAttribute("opacity", 0); }
+  hit.addEventListener("mousemove", move);
+  hit.addEventListener("mouseleave", leave);
+  hit.addEventListener("touchmove", move, {passive:false});
+  hit.addEventListener("touchend", leave);
 }
 
 /* ======================================================================
@@ -600,11 +776,16 @@ function drawChart(svg, cfg){
    ====================================================================== */
 const $ = id => document.getElementById(id);
 const state = { route: "oral" };
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
 
 function populateLibrary(){
   const sel = $("drugSelect");
   LIBRARY.forEach((d,i) => { const o = document.createElement("option"); o.value = i; o.textContent = d.name; sel.appendChild(o); });
-  const custom = document.createElement("option"); custom.value = "custom"; custom.textContent = "— Custom —"; sel.appendChild(custom);
+  const custom = document.createElement("option"); custom.value = "custom"; custom.textContent = "Custom structure"; sel.appendChild(custom);
+}
+function defaultDose(d){
+  const map = { caffeine:100, ibuprofen:400, acetaminophen:500, theophylline:300, metformin:500, warfarin:5, propofol:150, gentamicin:120 };
+  return map[(d.name || "").toLowerCase()] || 100;
 }
 function loadDrug(d){
   $("smiles").value = d.smiles || "";
@@ -612,24 +793,18 @@ function loadDrug(d){
   $("CL").value = pk.CL ?? ""; $("Vc").value = pk.Vc ?? "";
   $("ka").value = pk.ka ?? ""; $("F").value = pk.F ?? 1; $("tlag").value = pk.tlag ?? 0;
   if (pk.Q != null && pk.Vp != null){ $("ncomp").value = "2"; $("Q").value = pk.Q; $("Vp").value = pk.Vp; }
-  else { $("ncomp").value = "1"; }
+  else $("ncomp").value = "1";
   const pd = d.pd || { model: "none" };
   $("pdmodel").value = pd.model || "none";
   $("E0").value = pd.E0 ?? 0; $("Emax").value = pd.Emax ?? 100; $("EC50").value = pd.EC50 ?? 5;
   $("Imax").value = pd.Imax ?? 80; $("IC50").value = pd.IC50 ?? 2; $("hill").value = pd.hill ?? 1;
   $("slope").value = pd.slope ?? 10; $("ke0").value = pd.ke0 ?? ""; $("effunits").value = pd.effect_units || "";
-  // sensible default regimen by route
-  const route = (pk.ka == null && pk.Q != null) ? "iv_bolus" : (pk.ka == null ? "iv_bolus" : "oral");
-  setRoute(pk.ka == null ? "iv_bolus" : "oral");
+  setRoute(pk.ka == null ? "iv_bolus" : "oral");   // drugs without ka are IV-only
   $("dose").value = defaultDose(d);
   $("ndoses").value = 1; $("interval").value = 8;
-  $("tend").value = Math.max(24, Math.round((Math.log(2)/(pk.CL/pk.Vc))*5));
-  d._desc = d; // mark builtin
-}
-function defaultDose(d){
-  const n = (d.name||"").toLowerCase();
-  const map = { caffeine:100, ibuprofen:400, acetaminophen:500, theophylline:300, metformin:500, warfarin:5, propofol:150, gentamicin:120 };
-  return map[n] || 100;
+  $("twMin").value = ""; $("twMax").value = "";      // a target range is drug-specific
+  const rates = dispositionRates({ CL: pk.CL, Vc: pk.Vc, Q: pk.Q, Vp: pk.Vp });
+  $("tend").value = Math.max(24, Math.round(5*Math.LN2/rates.terminal));
 }
 function setRoute(r){
   state.route = r;
@@ -639,7 +814,7 @@ function setRoute(r){
 }
 function readPK(){
   const pk = { CL: +$("CL").value, Vc: +$("Vc").value };
-  if (state.route === "oral"){ pk.ka = +$("ka").value; pk.F = +$("F").value; pk.tlag = +$("tlag").value || 0; }
+  if (state.route === "oral"){ pk.ka = +$("ka").value; pk.F = +$("F").value; pk.tlag = +$("tlag").value; }
   if ($("ncomp").value === "2"){ pk.Q = +$("Q").value; pk.Vp = +$("Vp").value; }
   return pk;
 }
@@ -648,18 +823,43 @@ function readPD(){
   if (model === "none") return { model: "none" };
   const pd = { model, E0:+$("E0").value, Emax:+$("Emax").value, EC50:+$("EC50").value,
     Imax:+$("Imax").value, IC50:+$("IC50").value, hill:+$("hill").value, slope:+$("slope").value,
-    effect_units: $("effunits").value };
-  const ke0 = $("ke0").value; if (ke0 !== "" && +ke0 > 0) pd.ke0 = +ke0;
+    effect_units: $("effunits").value.trim() };
+  const ke0 = +$("ke0").value;
+  if ($("ke0").value !== "" && ke0 > 0) pd.ke0 = ke0;
   return pd;
 }
 function readReg(){
-  return { dose:+$("dose").value, route: state.route, interval:+$("interval").value,
-    n_doses: Math.max(1, Math.round(+$("ndoses").value)||1),
-    infusion_duration: +$("infdur").value };
+  return { dose: +$("dose").value, route: state.route, interval: +$("interval").value,
+           n_doses: Math.round(+$("ndoses").value), infusion_duration: +$("infdur").value };
+}
+function validate(pk, reg, pd, tEnd){
+  const p = [];
+  if (!(pk.CL > 0)) p.push("Clearance (CL) must be greater than 0.");
+  if (!(pk.Vc > 0)) p.push("Central volume (Vc) must be greater than 0.");
+  if (reg.route === "oral"){
+    if (!(pk.ka > 0)) p.push("Oral dosing needs an absorption rate ka greater than 0.");
+    if (!(pk.F > 0 && pk.F <= 1)) p.push("Bioavailability F must be above 0 and at most 1.");
+    if (!(pk.tlag >= 0)) p.push("Lag time cannot be negative.");
+  }
+  if ($("ncomp").value === "2" && !(pk.Q > 0 && pk.Vp > 0)) p.push("A two-compartment model needs Q and Vp greater than 0.");
+  if (!(reg.dose > 0)) p.push("Dose must be greater than 0.");
+  if (!(reg.n_doses >= 1 && reg.n_doses <= 500)) p.push("Number of doses must be between 1 and 500.");
+  else if (reg.n_doses > 1 && !(reg.interval > 0)) p.push("Repeat dosing needs an interval τ greater than 0.");
+  if (reg.route === "iv_infusion" && !(reg.infusion_duration > 0)) p.push("Infusion duration must be greater than 0.");
+  if (!(tEnd > 0)) p.push("Simulation end time must be greater than 0.");
+  if ((pd.model === "emax" || pd.model === "sigmoid_emax") && !(pd.EC50 > 0)) p.push("EC50 must be greater than 0.");
+  if (isInhibitory(pd) && !(pd.IC50 > 0)) p.push("IC50 must be greater than 0.");
+  if ((pd.model === "sigmoid_emax" || pd.model === "sigmoid_imax") && !(pd.hill > 0)) p.push("The Hill coefficient must be greater than 0.");
+  return p;
+}
+function setStatus(problems){
+  const st = $("status");
+  st.hidden = problems.length === 0;
+  st.textContent = problems.length ? problems.join(" ") + " The charts show the last valid result." : "";
+  document.querySelectorAll(".chart-wrap, #metrics").forEach(e => e.classList.toggle("stale", problems.length > 0));
 }
 function updatePDFields(){
-  const model = $("pdmodel").value;
-  const show = model !== "none";
+  const model = $("pdmodel").value, show = model !== "none";
   $("pdFields").classList.toggle("hidden", !show);
   $("pdCard").classList.toggle("hidden", !show);
   document.querySelectorAll("#pdFields [data-pd]").forEach(elm => {
@@ -668,142 +868,155 @@ function updatePDFields(){
 }
 function updateTwoComp(){ $("twoComp").classList.toggle("hidden", $("ncomp").value !== "2"); }
 
+function renderFormula(f){
+  const m = String(f).match(/^(.*?)([+-]\d*)?$/);
+  return esc(m[1]).replace(/(\d+)/g, "<sub>$1</sub>") + (m[2] ? `<sup>${esc(m[2])}</sup>` : "");
+}
 function renderStructure(){
   const smiles = $("smiles").value.trim();
   const idx = $("drugSelect").value;
   const builtin = idx !== "custom" ? LIBRARY[+idx] : null;
-  const chips = $("descChips"); chips.innerHTML = "";
-  const note = $("descNote");
-  const parsed = parseSmiles(smiles);
-
+  const chips = $("descChips"), note = $("descNote");
+  chips.innerHTML = "";
+  const chip = (label, val, cls = "") => {
+    const c = document.createElement("span"); c.className = "chip " + cls;
+    c.innerHTML = `${esc(label)} <b>${esc(val)}</b>`; chips.appendChild(c);
+  };
   if (builtin && builtin.smiles === smiles){
-    $("formula").innerHTML = subscriptFormula(builtin.formula || "—");
-    const add = (label, val, cls="") => { const c = document.createElement("span"); c.className = "chip "+cls; c.innerHTML = `${label} <b>${val}</b>`; chips.appendChild(c); };
-    add("MW", builtin.mw);
-    add("logP", builtin.logp);
-    add("TPSA", builtin.tpsa);
-    add("HBD", builtin.hbd); add("HBA", builtin.hba);
-    add("QED", builtin.qed);
-    add("Lipinski Ro5", builtin.lipinski_pass ? "pass" : `${builtin.lipinski_viol} viol.`, builtin.lipinski_pass ? "pass" : "fail");
+    $("formula").innerHTML = renderFormula(builtin.formula || "");
+    chip("MW", builtin.mw); chip("logP", builtin.logp); chip("TPSA", builtin.tpsa);
+    chip("HBD", builtin.hbd); chip("HBA", builtin.hba); chip("QED", builtin.qed);
+    chip("Lipinski Ro5", builtin.lipinski_pass ? "pass" : `${builtin.lipinski_viol} violations`, builtin.lipinski_pass ? "pass" : "fail");
     note.textContent = builtin.notes || "Descriptors computed with RDKit.";
-  } else if (parsed){
-    $("formula").innerHTML = subscriptFormula(parsed.formula) + ` <span style="color:var(--muted);font-size:.8rem">(heavy atoms)</span>`;
-    const add = (label, val) => { const c = document.createElement("span"); c.className = "chip"; c.innerHTML = `${label} <b>${val}</b>`; chips.appendChild(c); };
-    add("Heavy MW", parsed.mw.toFixed(1));
-    add("Heavy atoms", parsed.heavy);
-    note.innerHTML = "Custom structure parsed in-browser: heavy-atom formula &amp; mass only (implicit H not counted). For exact MW, logP, TPSA, QED and Lipinski, register it with the Python package: <code>python -m alpha describe --smiles \"…\"</code>";
-  } else {
-    $("formula").textContent = smiles ? "Unparseable structure" : "—";
-    note.textContent = smiles ? "Could not parse this SMILES in-browser." : "Enter a SMILES string or pick a drug.";
+    return;
+  }
+  if (!smiles){
+    $("formula").textContent = "No structure";
+    note.textContent = "Enter a SMILES string or pick a drug from the library.";
+    return;
+  }
+  try {
+    const d = analyzeSmiles(smiles);
+    $("formula").innerHTML = renderFormula(d.formula);
+    chip("MW", d.mw.toFixed(2)); chip("Heavy atoms", d.heavy); chip("Rings", d.rings);
+    if (d.charge) chip("Net charge", (d.charge > 0 ? "+" : "") + d.charge);
+    note.innerHTML = "Read in your browser. For logP, TPSA, QED and Lipinski checks, run " +
+      "<code>python -m alpha describe --smiles \"…\"</code>, which uses RDKit.";
+  } catch (e){
+    if (!(e instanceof SmilesError)) throw e;
+    $("formula").textContent = "Invalid structure";
+    note.textContent = `${e.message}. Check the SMILES and try again.`;
   }
 }
-function subscriptFormula(f){ return String(f).replace(/(\d+)/g, "<sub>$1</sub>"); }
 
 const METRIC_DEFS = [
   ["Cmax", "Cₘₐₓ", "conc"],
   ["Tmax", "Tₘₐₓ", "t"],
-  ["AUC_last", "AUC(last)", "auc"],
-  ["AUC_inf", "AUC(∞)", "auc"],
-  ["half_life", "t½ (terminal)", "t"],
+  ["AUC_last", "AUC to end", "auc"],
+  ["AUC_inf", "AUC 0–∞", "auc"],
   ["model_half_life", "t½ (model)", "t"],
-  ["accumulation", "Accum. ratio", ""],
-  ["avg_css", "Avg Css", "conc"],
-  ["C_last", "C(end)", "conc"],
+  ["half_life", "t½ (from curve)", "t"],
+  ["distribution_half_life", "t½ α (distribution)", "t"],
+  ["accumulation", "Accumulation ratio", ""],
+  ["avg_css", "Average Css", "conc"],
+  ["C_last", "C at end", "conc"],
   ["peak_effect", "Peak effect", "eff"],
+  ["max_inhibition", "Max inhibition", "eff"],
+  ["nadir_effect", "Lowest effect", "eff"],
 ];
-function renderMetrics(m, conc_units, eff_units){
-  const box = $("metrics"); box.innerHTML = "";
-  const unitFor = u => u==="conc"?conc_units : u==="t"?"h" : u==="auc"?conc_units+"·h" : u==="eff"?(eff_units||""):"";
-  METRIC_DEFS.forEach(([key,label,u]) => {
+function renderMetrics(m, concUnits, effUnits){
+  const box = $("metrics");
+  box.innerHTML = "";
+  const unitFor = u => u === "conc" ? concUnits : u === "t" ? "h" : u === "auc" ? concUnits + "·h" : u === "eff" ? effUnits : "";
+  METRIC_DEFS.forEach(([key, label, u]) => {
     if (m[key] == null || !isFinite(m[key])) return;
     const d = document.createElement("div"); d.className = "metric";
-    d.innerHTML = `<div class="k">${label}</div><div class="v">${fmt(m[key])}<span class="u">${unitFor(u)}</span></div>`;
+    d.innerHTML = `<div class="k">${label}</div><div class="v">${fmtMetric(m[key])}<span class="u">${esc(unitFor(u))}</span></div>`;
     box.appendChild(d);
   });
 }
 
 function recompute(){
-  const pk = readPK();
-  if (!(pk.CL > 0) || !(pk.Vc > 0)){ return; }
-  const reg = readReg();
-  if (!(reg.dose > 0)) return;
-  if (state.route === "oral" && !(pk.ka > 0)) return;
-  let tEnd = +$("tend").value; if (!(tEnd > 0)) tEnd = 24;
-  const pd = readPD();
-
-  $("doseV").textContent = reg.n_doses > 1 ? `×${reg.n_doses} q${fmt(reg.interval)}h` : "";
+  const pk = readPK(), reg = readReg(), pd = readPD();
+  const tEnd = +$("tend").value;
+  $("doseV").textContent = reg.n_doses > 1 && reg.interval > 0 ? `${reg.n_doses} doses, every ${fmtMetric(reg.interval)} h` : "";
+  const problems = validate(pk, reg, pd, tEnd);
+  setStatus(problems);
+  if (problems.length) return;
 
   const pkres = simulatePK(pk, reg, tEnd);
   const pdres = simulatePD(pkres.t, pkres.conc, pd);
-  const m = computeMetrics(pkres, pdres, pk, reg);
+  const m = computeMetrics(pkres, pdres, pk, reg, pd);
+  const concUnits = "mg/L", tUnits = "h";
 
-  const conc_units = "mg/L", t_units = "h";
-  // therapeutic band
+  // therapeutic window
   const twMin = $("twMin").value, twMax = $("twMax").value;
-  let band = null, twMsg = "Shade a target concentration band and report time-in-window.";
+  let band = null, twMsg = "Shade a target concentration band and report time in range.";
   if (twMin !== "" && twMax !== "" && +twMax > +twMin){
     band = [+twMin, +twMax];
     let inWin = 0;
-    for (let i=1;i<pkres.t.length;i++){ const cm = (pkres.conc[i]+pkres.conc[i-1])/2; if (cm >= band[0] && cm <= band[1]) inWin += pkres.t[i]-pkres.t[i-1]; }
-    twMsg = `In target window ${((inWin/tEnd)*100).toFixed(0)}% of the time.`;
-  }
+    for (let i=1;i<pkres.t.length;i++){
+      const cm = (pkres.conc[i] + pkres.conc[i-1]) / 2;
+      if (cm >= band[0] && cm <= band[1]) inWin += pkres.t[i] - pkres.t[i-1];
+    }
+    twMsg = `In the target window ${((inWin / tEnd) * 100).toFixed(0)}% of the time.`;
+  } else if (twMin !== "" && twMax !== "") twMsg = "Max target must be greater than min target.";
   $("twNote").textContent = twMsg;
 
-  // PK chart
-  const pkSeries = [{ y: pkres.conc, color: cssVar("--accent"), short: "C" }];
-  $("pkLegend").innerHTML = `<span><i style="background:${cssVar("--accent")}"></i>Plasma conc. (${conc_units})</span>` +
-    (band ? `<span><i style="background:${cssVar("--band")};height:10px;border-radius:2px"></i>Target window</span>` : "");
-  drawChart($("pkChart"), { t: pkres.t, series: pkSeries, yLabel: `Concentration (${conc_units})`, xLabel: `Time (${t_units})`, doseTimes: pkres.doseTimes, band, tUnits: t_units });
-
-  // PD chart
-  if (pdres){
-    const eff = pd.effect_units || "effect";
-    const series = [{ y: pdres.effect, color: cssVar("--effect"), short: "E" }];
-    let legend = `<span><i style="background:${cssVar("--effect")}"></i>Effect${pd.effect_units?` (${pd.effect_units})`:""}</span>`;
-    if (pd.ke0){ series.push({ y: pdres.driver, color: cssVar("--ce"), short: "Ce" }); legend += `<span><i style="background:${cssVar("--ce")}"></i>Effect-site conc.</span>`; }
-    $("pdLegend").innerHTML = legend;
-    $("pdTitle").textContent = "Effect over time" + (pd.ke0 ? " (with effect-compartment delay)" : "");
-    // Note: when ke0 set, plot effect on its own scale; driver is a concentration, so only plot effect for a clean single axis
-    drawChart($("pdChart"), { t: pkres.t, series: [{ y: pdres.effect, color: cssVar("--effect"), short: "E" }], yLabel: eff, xLabel: `Time (${t_units})`, doseTimes: pkres.doseTimes, tUnits: t_units });
+  // Concentration chart: plasma, plus the effect-site concentration (same
+  // units) when an effect compartment delays the response.
+  const pkSeries = [{ y: pkres.conc, color: "var(--accent)", short: "C" }];
+  let pkLegend = `<span><i style="background:var(--accent)"></i>Plasma conc. (${concUnits})</span>`;
+  if (pdres && pd.ke0){
+    pkSeries.push({ y: pdres.driver, color: "var(--ce)", short: "Ce", dash: "6 4" });
+    pkLegend += `<span><i class="dashed" style="--sw:var(--ce)"></i>Effect-site conc. (lags plasma)</span>`;
   }
-  renderMetrics(m, conc_units, pd.effect_units);
+  if (band) pkLegend += `<span><i style="background:var(--band);height:10px;border-radius:2px"></i>Target window</span>`;
+  $("pkLegend").innerHTML = pkLegend;
+  drawChart($("pkChart"), { t: pkres.t, series: pkSeries, yLabel: `Concentration (${concUnits})`,
+    xLabel: `Time (${tUnits})`, doseTimes: pkres.doseTimes, band, tUnits });
+
+  if (pdres){
+    const effLabel = pd.effect_units || "Effect";
+    $("pdLegend").innerHTML = `<span><i style="background:var(--effect)"></i>Effect${pd.effect_units ? ` (${esc(pd.effect_units)})` : ""}</span>`;
+    $("pdTitle").textContent = pd.ke0 ? "Effect over time (delayed by the effect site)" : "Effect over time";
+    drawChart($("pdChart"), { t: pkres.t, series: [{ y: pdres.effect, color: "var(--effect)", short: "E" }],
+      yLabel: effLabel, xLabel: `Time (${tUnits})`, doseTimes: pkres.doseTimes, tUnits });
+  }
+  renderMetrics(m, concUnits, pd.effect_units || "");
 }
 
 /* ---- events ---- */
 function wire(){
   populateLibrary();
   $("drugSelect").addEventListener("change", e => {
-    const v = e.target.value;
-    if (v !== "custom"){ loadDrug(LIBRARY[+v]); }
+    if (e.target.value !== "custom") loadDrug(LIBRARY[+e.target.value]);
     updatePDFields(); updateTwoComp(); renderStructure(); recompute();
   });
   document.querySelectorAll("#routeSeg button").forEach(b => b.addEventListener("click", () => { setRoute(b.dataset.route); recompute(); }));
   $("pdmodel").addEventListener("change", () => { updatePDFields(); recompute(); });
   $("ncomp").addEventListener("change", () => { updateTwoComp(); recompute(); });
   $("smiles").addEventListener("input", () => { $("drugSelect").value = "custom"; renderStructure(); });
-  // recompute on any input
   document.querySelectorAll("input, select").forEach(inp => {
-    if (inp.id === "smiles") return;
+    if (inp.id === "smiles" || inp.id === "drugSelect") return;
     inp.addEventListener("input", recompute);
   });
-  // theme toggle
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme");
     const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
     const next = cur ? (cur === "dark" ? "light" : "dark") : (sysDark ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("alpha-theme", next); } catch(e){}
-    recompute();
+    try { localStorage.setItem("alpha-theme", next); } catch (e) {}
   });
-  try { const saved = localStorage.getItem("alpha-theme"); if (saved) document.documentElement.setAttribute("data-theme", saved); } catch(e){}
+  try { const saved = localStorage.getItem("alpha-theme"); if (saved) document.documentElement.setAttribute("data-theme", saved); } catch (e) {}
 
-  // initial: load Theophylline (nice multiple-dose demo)
-  const start = LIBRARY.findIndex(d => d.name === "Theophylline");
-  $("drugSelect").value = start >= 0 ? start : 0;
-  loadDrug(LIBRARY[start >= 0 ? start : 0]);
+  // Open on Theophylline: a narrow-therapeutic-index drug, repeat oral dosing.
+  const start = Math.max(0, LIBRARY.findIndex(d => d.name === "Theophylline"));
+  $("drugSelect").value = start;
+  loadDrug(LIBRARY[start]);
   $("ndoses").value = 6; $("interval").value = 8; $("tend").value = 72; $("dose").value = 300;
+  $("twMin").value = 10; $("twMax").value = 20;
   updatePDFields(); updateTwoComp(); renderStructure(); recompute();
-  window.addEventListener("resize", () => recompute());
 }
 wire();
 </script>

@@ -8,6 +8,7 @@ numerical work lives in :mod:`alpha.pk`, :mod:`alpha.pd` and
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional
 
@@ -60,6 +61,27 @@ class PKParameters:
         else:
             k12 = k21 = 0.0
         return {"k10": k10, "k12": k12, "k21": k21}
+
+    def disposition_rates(self) -> Dict[str, float]:
+        """Hybrid disposition rate constants.
+
+        For a one-compartment model the only disposition rate is k10. For a
+        two-compartment model the plasma curve after a bolus is
+        bi-exponential, ``C = A*exp(-alpha*t) + B*exp(-beta*t)``, where
+        alpha (fast, distribution) and beta (slow, terminal) are the roots of
+        ``x^2 - (k10+k12+k21)*x + k10*k21 = 0``. The *terminal* rate beta,
+        not k10, governs the drug's half-life and its accumulation.
+        """
+        mc = self.micro_constants()
+        k10, k12, k21 = mc["k10"], mc["k12"], mc["k21"]
+        if self.n_compartments == 1:
+            return {"terminal": k10, "distribution": None}
+        s = k10 + k12 + k21
+        disc = math.sqrt(max(s * s - 4.0 * k10 * k21, 0.0))
+        alpha = (s + disc) / 2.0
+        # Product form avoids cancellation when beta << alpha.
+        beta = (k10 * k21) / alpha
+        return {"terminal": beta, "distribution": alpha}
 
     def validate(self) -> None:
         if self.CL <= 0:
