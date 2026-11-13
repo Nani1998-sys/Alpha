@@ -1,0 +1,564 @@
+{
+  "drugs": [
+    {
+      "name": "Caffeine",
+      "smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+      "inchikey": "RYYVLZVUVIJVGH-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+        "formula": "C8H10N4O2",
+        "mol_weight": 194.19,
+        "logp": -1.03,
+        "tpsa": 61.82,
+        "h_bond_donors": 0,
+        "h_bond_acceptors": 3,
+        "rotatable_bonds": 0,
+        "rings": 2,
+        "aromatic_rings": 2,
+        "heavy_atoms": 14,
+        "fraction_csp3": 0.375,
+        "molar_refractivity": 51.2,
+        "qed": 0.538,
+        "inchikey": "RYYVLZVUVIJVGH-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "possible liability (outside Lipinski/Veber space)",
+          "cns_penetration": "likely low CNS penetration (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 6.0,
+        "Vc": 36.0,
+        "ka": 4.0,
+        "F": 0.99,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "emax",
+        "E0": 0,
+        "Emax": 10,
+        "EC50": 5.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "alertness (0-10)"
+      },
+      "notes": "CNS stimulant. Illustrative PK (~5 h half-life)."
+    },
+    {
+      "name": "Ibuprofen",
+      "smiles": "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+      "inchikey": "HEFNNWSXXWATRW-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+        "formula": "C13H18O2",
+        "mol_weight": 206.28,
+        "logp": 3.07,
+        "tpsa": 37.3,
+        "h_bond_donors": 1,
+        "h_bond_acceptors": 1,
+        "rotatable_bonds": 4,
+        "rings": 1,
+        "aromatic_rings": 1,
+        "heavy_atoms": 15,
+        "fraction_csp3": 0.462,
+        "molar_refractivity": 61.03,
+        "qed": 0.822,
+        "inchikey": "HEFNNWSXXWATRW-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "favorable (within Lipinski/Veber space)",
+          "cns_penetration": "plausibly CNS-penetrant (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 3.5,
+        "Vc": 10.0,
+        "ka": 1.5,
+        "F": 0.9,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "sigmoid_emax",
+        "E0": 0,
+        "Emax": 100,
+        "EC50": 10.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.5,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% analgesia"
+      },
+      "notes": "NSAID. Short half-life (~2 h)."
+    },
+    {
+      "name": "Acetaminophen",
+      "smiles": "CC(=O)Nc1ccc(O)cc1",
+      "inchikey": "RZVAJINKPMORJF-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CC(=O)Nc1ccc(O)cc1",
+        "formula": "C8H9NO2",
+        "mol_weight": 151.16,
+        "logp": 1.35,
+        "tpsa": 49.33,
+        "h_bond_donors": 2,
+        "h_bond_acceptors": 2,
+        "rotatable_bonds": 1,
+        "rings": 1,
+        "aromatic_rings": 1,
+        "heavy_atoms": 11,
+        "fraction_csp3": 0.125,
+        "molar_refractivity": 42.41,
+        "qed": 0.595,
+        "inchikey": "RZVAJINKPMORJF-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "favorable (within Lipinski/Veber space)",
+          "cns_penetration": "plausibly CNS-penetrant (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 21.0,
+        "Vc": 63.0,
+        "ka": 3.0,
+        "F": 0.88,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "emax",
+        "E0": 0,
+        "Emax": 100,
+        "EC50": 8.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% antipyresis"
+      },
+      "notes": "Analgesic/antipyretic (paracetamol)."
+    },
+    {
+      "name": "Theophylline",
+      "smiles": "Cn1c(=O)c2[nH]cnc2n(C)c1=O",
+      "inchikey": "ZFXYFBGIUFBOJW-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "Cn1c(=O)c2[nH]cnc2n(C)c1=O",
+        "formula": "C7H8N4O2",
+        "mol_weight": 180.17,
+        "logp": -1.04,
+        "tpsa": 72.68,
+        "h_bond_donors": 1,
+        "h_bond_acceptors": 3,
+        "rotatable_bonds": 0,
+        "rings": 2,
+        "aromatic_rings": 2,
+        "heavy_atoms": 13,
+        "fraction_csp3": 0.286,
+        "molar_refractivity": 46.58,
+        "qed": 0.562,
+        "inchikey": "ZFXYFBGIUFBOJW-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "possible liability (outside Lipinski/Veber space)",
+          "cns_penetration": "likely low CNS penetration (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 2.8,
+        "Vc": 35.0,
+        "ka": 3.5,
+        "F": 1.0,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "emax",
+        "E0": 0,
+        "Emax": 100,
+        "EC50": 10.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% bronchodilation"
+      },
+      "notes": "Narrow therapeutic index; target ~10-20 mg/L."
+    },
+    {
+      "name": "Metformin",
+      "smiles": "CN(C)C(=N)NC(=N)N",
+      "inchikey": "XZWYZXLIPXDOLR-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CN(C)C(=N)NC(=N)N",
+        "formula": "C4H11N5",
+        "mol_weight": 129.17,
+        "logp": -1.03,
+        "tpsa": 88.99,
+        "h_bond_donors": 4,
+        "h_bond_acceptors": 2,
+        "rotatable_bonds": 0,
+        "rings": 0,
+        "aromatic_rings": 0,
+        "heavy_atoms": 9,
+        "fraction_csp3": 0.5,
+        "molar_refractivity": 36.46,
+        "qed": 0.249,
+        "inchikey": "XZWYZXLIPXDOLR-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "possible liability (outside Lipinski/Veber space)",
+          "cns_penetration": "likely low CNS penetration (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 30.0,
+        "Vc": 90.0,
+        "ka": 1.0,
+        "F": 0.55,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "emax",
+        "E0": 0,
+        "Emax": 40,
+        "EC50": 1.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% HGP suppression"
+      },
+      "notes": "Renally cleared antihyperglycemic."
+    },
+    {
+      "name": "Warfarin",
+      "smiles": "CC(=O)CC(c1ccccc1)c1c(O)c2ccccc2oc1=O",
+      "inchikey": "PJVWKTKQMONHTI-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CC(=O)CC(c1ccccc1)c1c(O)c2ccccc2oc1=O",
+        "formula": "C19H16O4",
+        "mol_weight": 308.33,
+        "logp": 3.61,
+        "tpsa": 67.51,
+        "h_bond_donors": 1,
+        "h_bond_acceptors": 4,
+        "rotatable_bonds": 4,
+        "rings": 3,
+        "aromatic_rings": 3,
+        "heavy_atoms": 23,
+        "fraction_csp3": 0.158,
+        "molar_refractivity": 87.73,
+        "qed": 0.748,
+        "inchikey": "PJVWKTKQMONHTI-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "favorable (within Lipinski/Veber space)",
+          "cns_penetration": "plausibly CNS-penetrant (rule of thumb)",
+          "size_class": "lead-/drug-like",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 0.2,
+        "Vc": 8.0,
+        "ka": 1.5,
+        "F": 0.95,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "imax",
+        "E0": 100,
+        "Emax": null,
+        "EC50": null,
+        "Imax": 70,
+        "IC50": 1.5,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": 0.02,
+        "effect_units": "% clotting activity"
+      },
+      "notes": "Anticoagulant; very long half-life, delayed effect (ke0)."
+    },
+    {
+      "name": "Propofol",
+      "smiles": "CC(C)c1cccc(C(C)C)c1O",
+      "inchikey": "OLBCVFGFOZPWHH-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CC(C)c1cccc(C(C)C)c1O",
+        "formula": "C12H18O",
+        "mol_weight": 178.27,
+        "logp": 3.64,
+        "tpsa": 20.23,
+        "h_bond_donors": 1,
+        "h_bond_acceptors": 1,
+        "rotatable_bonds": 2,
+        "rings": 1,
+        "aromatic_rings": 1,
+        "heavy_atoms": 13,
+        "fraction_csp3": 0.5,
+        "molar_refractivity": 56.28,
+        "qed": 0.733,
+        "inchikey": "OLBCVFGFOZPWHH-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 0,
+            "pass": true,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": true,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "favorable (within Lipinski/Veber space)",
+          "cns_penetration": "plausibly CNS-penetrant (rule of thumb)",
+          "size_class": "fragment / small lead",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 108.0,
+        "Vc": 20.0,
+        "ka": null,
+        "F": 1.0,
+        "tlag": 0.0,
+        "Q": 40.0,
+        "Vp": 120.0
+      },
+      "pd": {
+        "model": "sigmoid_emax",
+        "E0": 0,
+        "Emax": 100,
+        "EC50": 3.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 3,
+        "slope": null,
+        "ke0": 0.5,
+        "effect_units": "% hypnosis"
+      },
+      "notes": "IV anesthetic; two-compartment; rapid onset/offset."
+    },
+    {
+      "name": "Gentamicin",
+      "smiles": "CNC1CCC(N)C(OC2OC(CN)CCC2N)C1OC1OC(C(C)(O)CO)C(O)C1NC",
+      "inchikey": "WSBYEEAUKRHUNH-UHFFFAOYSA-N",
+      "descriptors": {
+        "canonical_smiles": "CNC1CCC(N)C(OC2OC(CN)CCC2N)C1OC1OC(C(C)(O)CO)C(O)C1NC",
+        "formula": "C21H43N5O7",
+        "mol_weight": 477.6,
+        "logp": -3.33,
+        "tpsa": 199.73,
+        "h_bond_donors": 8,
+        "h_bond_acceptors": 12,
+        "rotatable_bonds": 9,
+        "rings": 3,
+        "aromatic_rings": 0,
+        "heavy_atoms": 33,
+        "fraction_csp3": 1.0,
+        "molar_refractivity": 119.95,
+        "qed": 0.164,
+        "inchikey": "WSBYEEAUKRHUNH-UHFFFAOYSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 2,
+            "pass": false,
+            "flags": {
+              "mw_<=500": true,
+              "logp_<=5": true,
+              "hbd_<=5": false,
+              "hba_<=10": false
+            }
+          },
+          "veber": {
+            "pass": false,
+            "flags": {
+              "rotatable_bonds_<=10": true,
+              "tpsa_<=140": false
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "possible liability (outside Lipinski/Veber space)",
+          "cns_penetration": "likely low CNS penetration (rule of thumb)",
+          "size_class": "lead-/drug-like",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 5.4,
+        "Vc": 18.0,
+        "ka": null,
+        "F": 1.0,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "emax",
+        "E0": 0,
+        "Emax": 100,
+        "EC50": 2.0,
+        "Imax": null,
+        "IC50": null,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% bactericidal"
+      },
+      "notes": "Aminoglycoside (IV); concentration-dependent killing."
+    }
+  ]
+}

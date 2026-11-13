@@ -1,0 +1,11 @@
+# Core numerical stack (required)
+numpy>=1.24
+scipy>=1.10
+
+# Chemistry: structure parsing + molecular descriptors (strongly recommended).
+# Without RDKit, Alpha still runs but structure analysis falls back to
+# formula / molecular-weight only.
+rdkit>=2023.3
+
+# Plotting (optional, needed for `--plot` / plot_simulation)
+matplotlib>=3.6

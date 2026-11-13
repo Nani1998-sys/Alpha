@@ -1,0 +1,809 @@
+<title>Alpha PK/PD Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a fixed control rail (left) beside a scrollable results column
+     (structure card, two time-course charts, exposure metrics); stacks on
+     phones. Palette: slate neutrals with a steel-blue bias; blue encodes
+     plasma concentration, amber encodes drug effect (distinct across CVD). */
+  :root {
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --surface-2: #eef2f7;
+    --ink: #0f1b2d;
+    --muted: #5a6b84;
+    --line: #dce3ec;
+    --line-strong: #c3cedd;
+    --accent: #1f6feb;      /* concentration */
+    --effect: #e8730c;      /* effect */
+    --ce: #7c5cff;          /* effect-site conc */
+    --good: #15863f;
+    --warn: #b7791f;
+    --danger: #d13438;
+    --band: rgba(31,111,235,.10);
+    --shadow: 0 1px 2px rgba(15,27,45,.06), 0 8px 24px rgba(15,27,45,.06);
+    --radius: 14px;
+    --font-ui: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --font-head: "Space Grotesk", var(--font-ui);
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a111e;
+      --surface: #111b2e;
+      --surface-2: #16233b;
+      --ink: #e8eef9;
+      --muted: #93a4c0;
+      --line: #22314c;
+      --line-strong: #30425f;
+      --accent: #4f93ff;
+      --effect: #f99a3f;
+      --ce: #a894ff;
+      --good: #43c073;
+      --warn: #e0b24a;
+      --danger: #ff6b6f;
+      --band: rgba(79,147,255,.14);
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a111e;
+    --surface: #111b2e;
+    --surface-2: #16233b;
+    --ink: #e8eef9;
+    --muted: #93a4c0;
+    --line: #22314c;
+    --line-strong: #30425f;
+    --accent: #4f93ff;
+    --effect: #f99a3f;
+    --ce: #a894ff;
+    --good: #43c073;
+    --warn: #e0b24a;
+    --danger: #ff6b6f;
+    --band: rgba(79,147,255,.14);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); line-height: 1.5; }
+  .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px; max-width: 1280px; margin: 0 auto; }
+
+  header.top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 18px; }
+  .brand h1 { font-family: var(--font-head); font-size: 1.55rem; font-weight: 700; margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+  .brand p { margin: 4px 0 0; color: var(--muted); font-size: .92rem; max-width: 62ch; }
+  .tag { display:inline-block; font-family: var(--font-mono); font-size: .68rem; letter-spacing:.06em; text-transform: uppercase; color: var(--accent); border:1px solid var(--line-strong); padding: 2px 8px; border-radius: 999px; vertical-align: middle; margin-left: 8px; }
+  .theme-btn { font: inherit; font-size: .8rem; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+  .theme-btn:hover { border-color: var(--line-strong); }
+
+  .disclaimer { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; font-size: .8rem; color: var(--muted); margin-bottom: 18px; }
+  .disclaimer b { color: var(--ink); }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .card + .card { margin-top: 18px; }
+  .card h2 { font-family: var(--font-head); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+
+  .rail { position: sticky; top: max(12px, env(safe-area-inset-top, 0px)); }
+  @media (max-width: 860px) { .rail { position: static; } }
+
+  label.field { display: block; margin-bottom: 11px; }
+  label.field > span { display:block; font-size: .74rem; color: var(--muted); margin-bottom: 3px; letter-spacing: .01em; }
+  label.field > span b { color: var(--ink); font-weight: 600; font-family: var(--font-mono); float: right; }
+  label.field > span sub { font-size: .72em; }
+  input[type="number"], input[type="text"], select {
+    width: 100%; font: inherit; font-size: .9rem; color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font-variant-numeric: tabular-nums;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .seg { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { flex: 1; font: inherit; font-size: .78rem; border: none; background: transparent; color: var(--muted); padding: 7px 4px; border-radius: 7px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+
+  .subhead { font-family: var(--font-mono); font-size: .68rem; letter-spacing:.08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 9px; border-top: 1px solid var(--line); padding-top: 13px; }
+  .subhead:first-of-type { border-top: none; padding-top: 0; }
+
+  /* charts */
+  .chart-head { display:flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .chart-head h2 { margin: 0; }
+  .legend { display:flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); }
+  .legend i { display:inline-block; width: 22px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  svg.chart { width: 100%; height: auto; display: block; touch-action: none; }
+  .chart-wrap { position: relative; margin-top: 6px; }
+
+  /* metrics */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .metric { background: var(--surface-2); border: 1px solid var(--line); border-radius: 11px; padding: 11px 12px; }
+  .metric .k { font-size: .7rem; color: var(--muted); letter-spacing: .02em; }
+  .metric .v { font-family: var(--font-head); font-size: 1.28rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .metric .u { font-size: .72rem; color: var(--muted); font-weight: 400; margin-left: 3px; }
+
+  /* structure */
+  .struct { display:grid; grid-template-columns: 1fr; gap: 10px; }
+  .chips { display:flex; flex-wrap: wrap; gap: 7px; }
+  .chip { font-size: .76rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; font-variant-numeric: tabular-nums; }
+  .chip b { font-weight: 600; }
+  .chip.pass { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--line)); }
+  .chip.fail { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+  .smiles-note { font-size: .76rem; color: var(--muted); }
+  .formula { font-family: var(--font-mono); font-size: 1.02rem; }
+  .formula sub { font-size: .72em; }
+
+  footer { margin-top: 22px; color: var(--muted); font-size: .78rem; text-align: center; }
+  code { font-family: var(--font-mono); font-size: .85em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .hidden { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Alpha PK/PD Lab <span class="tag">in silico</span></h1>
+      <p>Pick a drug or enter a chemical structure, set its pharmacokinetics and pharmacodynamics, and test a dosing regimen. Concentration, effect and exposure metrics update live.</p>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button">◑ Theme</button>
+  </header>
+
+  <div class="disclaimer">
+    <b>Modelling &amp; teaching tool.</b> Simulates PK/PD from the parameters you provide. Not a clinical reference, not medical advice, and not a predictor of real safety or efficacy. Bundled drug parameters are illustrative, literature-approximate figures.
+  </div>
+
+  <div class="grid">
+    <!-- ================= CONTROL RAIL ================= -->
+    <div class="rail">
+      <div class="card">
+        <h2>Drug</h2>
+        <label class="field">
+          <span>Library</span>
+          <select id="drugSelect"></select>
+        </label>
+        <label class="field">
+          <span>Chemical structure (SMILES)</span>
+          <input type="text" id="smiles" spellcheck="false" placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O">
+        </label>
+        <div class="smiles-note" id="smilesNote"></div>
+
+        <div class="subhead">Dosing regimen</div>
+        <div class="seg" id="routeSeg" role="group" aria-label="Route">
+          <button type="button" data-route="oral" aria-pressed="true">Oral</button>
+          <button type="button" data-route="iv_bolus" aria-pressed="false">IV bolus</button>
+          <button type="button" data-route="iv_infusion" aria-pressed="false">Infusion</button>
+        </div>
+        <div class="row2" style="margin-top:11px">
+          <label class="field"><span>Dose <b id="doseV"></b></span><input type="number" id="dose" min="0" step="any"></label>
+          <label class="field" id="infWrap"><span>Infusion dur (h)</span><input type="number" id="infdur" min="0" step="any" value="0.5"></label>
+        </div>
+        <div class="row3">
+          <label class="field"><span>No. doses</span><input type="number" id="ndoses" min="1" step="1" value="1"></label>
+          <label class="field"><span>Interval τ (h)</span><input type="number" id="interval" min="0" step="any" value="8"></label>
+          <label class="field"><span>Sim end (h)</span><input type="number" id="tend" min="1" step="any" value="24"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pharmacokinetics</h2>
+        <div class="row2">
+          <label class="field"><span>CL (L/h)</span><input type="number" id="CL" min="0" step="any"></label>
+          <label class="field"><span>V<sub>c</sub> (L)</span><input type="number" id="Vc" min="0" step="any"></label>
+        </div>
+        <div class="row3" id="oralPk">
+          <label class="field"><span>k<sub>a</sub> (1/h)</span><input type="number" id="ka" min="0" step="any"></label>
+          <label class="field"><span>F (0-1)</span><input type="number" id="F" min="0" max="1" step="any" value="1"></label>
+          <label class="field"><span>t<sub>lag</sub> (h)</span><input type="number" id="tlag" min="0" step="any" value="0"></label>
+        </div>
+        <label class="field" style="margin-top:2px">
+          <span>Disposition</span>
+          <select id="ncomp">
+            <option value="1">One-compartment</option>
+            <option value="2">Two-compartment</option>
+          </select>
+        </label>
+        <div class="row2" id="twoComp">
+          <label class="field"><span>Q (L/h)</span><input type="number" id="Q" min="0" step="any" value="10"></label>
+          <label class="field"><span>V<sub>p</sub> (L)</span><input type="number" id="Vp" min="0" step="any" value="40"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pharmacodynamics</h2>
+        <label class="field">
+          <span>Exposure–response model</span>
+          <select id="pdmodel">
+            <option value="none">None (PK only)</option>
+            <option value="emax">Emax</option>
+            <option value="sigmoid_emax">Sigmoidal Emax (Hill)</option>
+            <option value="imax">Imax (inhibitory)</option>
+            <option value="sigmoid_imax">Sigmoidal Imax</option>
+            <option value="linear">Linear</option>
+            <option value="loglinear">Log-linear</option>
+          </select>
+        </label>
+        <div id="pdFields">
+          <div class="row2">
+            <label class="field"><span>E<sub>0</sub> baseline</span><input type="number" id="E0" step="any" value="0"></label>
+            <label class="field" data-pd="emax sigmoid_emax"><span>E<sub>max</sub></span><input type="number" id="Emax" step="any" value="100"></label>
+          </div>
+          <div class="row2">
+            <label class="field" data-pd="emax sigmoid_emax"><span>EC<sub>50</sub></span><input type="number" id="EC50" min="0" step="any" value="5"></label>
+            <label class="field" data-pd="imax sigmoid_imax"><span>I<sub>max</sub></span><input type="number" id="Imax" step="any" value="80"></label>
+          </div>
+          <div class="row2">
+            <label class="field" data-pd="imax sigmoid_imax"><span>IC<sub>50</sub></span><input type="number" id="IC50" min="0" step="any" value="2"></label>
+            <label class="field" data-pd="sigmoid_emax sigmoid_imax"><span>Hill (γ)</span><input type="number" id="hill" min="0" step="any" value="1"></label>
+          </div>
+          <div class="row2">
+            <label class="field" data-pd="linear loglinear"><span>Slope</span><input type="number" id="slope" step="any" value="10"></label>
+            <label class="field"><span>k<sub>e0</sub> delay (1/h)</span><input type="number" id="ke0" min="0" step="any" placeholder="none"></label>
+          </div>
+          <label class="field"><span>Effect units label</span><input type="text" id="effunits" placeholder="% effect"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Therapeutic window (optional)</h2>
+        <div class="row2">
+          <label class="field"><span>Min target</span><input type="number" id="twMin" step="any" placeholder="none"></label>
+          <label class="field"><span>Max target</span><input type="number" id="twMax" step="any" placeholder="none"></label>
+        </div>
+        <div class="smiles-note" id="twNote">Shade a target concentration band and report time-in-window.</div>
+      </div>
+    </div>
+
+    <!-- ================= RESULTS ================= -->
+    <div class="main">
+      <div class="card">
+        <div class="chart-head">
+          <h2>Structure &amp; properties</h2>
+        </div>
+        <div class="struct">
+          <div class="formula" id="formula">—</div>
+          <div class="chips" id="descChips"></div>
+          <div class="smiles-note" id="descNote"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chart-head">
+          <h2 id="pkTitle">Plasma concentration</h2>
+          <div class="legend" id="pkLegend"></div>
+        </div>
+        <div class="chart-wrap"><svg class="chart" id="pkChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Concentration-time curve"></svg></div>
+      </div>
+
+      <div class="card" id="pdCard">
+        <div class="chart-head">
+          <h2 id="pdTitle">Effect</h2>
+          <div class="legend" id="pdLegend"></div>
+        </div>
+        <div class="chart-wrap"><svg class="chart" id="pdChart" viewBox="0 0 720 300" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Effect-time curve"></svg></div>
+      </div>
+
+      <div class="card">
+        <h2>Exposure metrics</h2>
+        <div class="metrics" id="metrics"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Alpha PK/PD Lab · compartmental PK (ODE) + Emax/Hill PD · the full engine with RDKit descriptors is the Python package in this project.
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ======================================================================
+   Embedded drug library (PK/PD + RDKit-computed descriptors from Python).
+   ====================================================================== */
+const LIBRARY = [{"name":"Caffeine","smiles":"Cn1c(=O)c2c(ncn2C)n(C)c1=O","formula":"C8H10N4O2","mw":194.19,"logp":-1.03,"tpsa":61.82,"hbd":0,"hba":3,"qed":0.538,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":6.0,"Vc":36.0,"ka":4.0,"F":0.99,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":10,"EC50":5.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"alertness (0-10)"},"notes":"CNS stimulant. Illustrative PK (~5 h half-life)."},{"name":"Ibuprofen","smiles":"CC(C)Cc1ccc(C(C)C(=O)O)cc1","formula":"C13H18O2","mw":206.28,"logp":3.07,"tpsa":37.3,"hbd":1,"hba":1,"qed":0.822,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":3.5,"Vc":10.0,"ka":1.5,"F":0.9,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"sigmoid_emax","E0":0,"Emax":100,"EC50":10.0,"Imax":null,"IC50":null,"hill":1.5,"slope":null,"ke0":null,"effect_units":"% analgesia"},"notes":"NSAID. Short half-life (~2 h)."},{"name":"Acetaminophen","smiles":"CC(=O)Nc1ccc(O)cc1","formula":"C8H9NO2","mw":151.16,"logp":1.35,"tpsa":49.33,"hbd":2,"hba":2,"qed":0.595,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":21.0,"Vc":63.0,"ka":3.0,"F":0.88,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":8.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% antipyresis"},"notes":"Analgesic/antipyretic (paracetamol)."},{"name":"Theophylline","smiles":"Cn1c(=O)c2[nH]cnc2n(C)c1=O","formula":"C7H8N4O2","mw":180.17,"logp":-1.04,"tpsa":72.68,"hbd":1,"hba":3,"qed":0.562,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":2.8,"Vc":35.0,"ka":3.5,"F":1.0,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":10.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% bronchodilation"},"notes":"Narrow therapeutic index; target ~10-20 mg/L."},{"name":"Metformin","smiles":"CN(C)C(=N)NC(=N)N","formula":"C4H11N5","mw":129.17,"logp":-1.03,"tpsa":88.99,"hbd":4,"hba":2,"qed":0.249,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":30.0,"Vc":90.0,"ka":1.0,"F":0.55,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":40,"EC50":1.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% HGP suppression"},"notes":"Renally cleared antihyperglycemic."},{"name":"Warfarin","smiles":"CC(=O)CC(c1ccccc1)c1c(O)c2ccccc2oc1=O","formula":"C19H16O4","mw":308.33,"logp":3.61,"tpsa":67.51,"hbd":1,"hba":4,"qed":0.748,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":0.2,"Vc":8.0,"ka":1.5,"F":0.95,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"imax","E0":100,"Emax":null,"EC50":null,"Imax":70,"IC50":1.5,"hill":1.0,"slope":null,"ke0":0.02,"effect_units":"% clotting activity"},"notes":"Anticoagulant; very long half-life, delayed effect (ke0)."},{"name":"Propofol","smiles":"CC(C)c1cccc(C(C)C)c1O","formula":"C12H18O","mw":178.27,"logp":3.64,"tpsa":20.23,"hbd":1,"hba":1,"qed":0.733,"lipinski_pass":true,"lipinski_viol":0,"pk":{"CL":108.0,"Vc":20.0,"ka":null,"F":1.0,"tlag":0.0,"Q":40.0,"Vp":120.0},"pd":{"model":"sigmoid_emax","E0":0,"Emax":100,"EC50":3.0,"Imax":null,"IC50":null,"hill":3,"slope":null,"ke0":0.5,"effect_units":"% hypnosis"},"notes":"IV anesthetic; two-compartment; rapid onset/offset."},{"name":"Gentamicin","smiles":"CNC1CCC(N)C(OC2OC(CN)CCC2N)C1OC1OC(C(C)(O)CO)C(O)C1NC","formula":"C21H43N5O7","mw":477.6,"logp":-3.33,"tpsa":199.73,"hbd":8,"hba":12,"qed":0.164,"lipinski_pass":false,"lipinski_viol":2,"pk":{"CL":5.4,"Vc":18.0,"ka":null,"F":1.0,"tlag":0.0,"Q":null,"Vp":null},"pd":{"model":"emax","E0":0,"Emax":100,"EC50":2.0,"Imax":null,"IC50":null,"hill":1.0,"slope":null,"ke0":null,"effect_units":"% bactericidal"},"notes":"Aminoglycoside (IV); concentration-dependent killing."}];
+
+/* ======================================================================
+   PK/PD engine (mirrors alpha/pk.py and alpha/pd.py)
+   ====================================================================== */
+function microConstants(pk){
+  const k10 = pk.CL / pk.Vc;
+  let k12 = 0, k21 = 0;
+  if (pk.Q != null && pk.Vp != null) { k12 = pk.Q / pk.Vc; k21 = pk.Q / pk.Vp; }
+  return { k10, k12, k21 };
+}
+function rhs(y, k10, k12, k21, ka, inf){
+  const ad = y[0], ac = y[1], ap = y[2];
+  return [ -ka*ad, ka*ad + inf - k10*ac - k12*ac + k21*ap, k12*ac - k21*ap ];
+}
+function rk4(y, h, a){
+  const k1 = rhs(y, ...a);
+  const y2 = [y[0]+h/2*k1[0], y[1]+h/2*k1[1], y[2]+h/2*k1[2]];
+  const k2 = rhs(y2, ...a);
+  const y3 = [y[0]+h/2*k2[0], y[1]+h/2*k2[1], y[2]+h/2*k2[2]];
+  const k3 = rhs(y3, ...a);
+  const y4 = [y[0]+h*k3[0], y[1]+h*k3[1], y[2]+h*k3[2]];
+  const k4 = rhs(y4, ...a);
+  return [
+    y[0] + h/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]),
+    y[1] + h/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]),
+    y[2] + h/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]),
+  ];
+}
+function doseTimes(reg){
+  const tau = reg.interval || 0, out = [];
+  for (let i=0;i<reg.n_doses;i++) out.push(i*tau);
+  return out;
+}
+function simulatePK(pk, reg, tEnd){
+  const { k10, k12, k21 } = microConstants(pk);
+  const ka = pk.ka || 0;
+  const times = doseTimes(reg);
+  const bolus = [], inf = [];
+  for (const dt of times){
+    if (reg.route === "oral") bolus.push([dt + (pk.tlag||0), 0, (pk.F==null?1:pk.F)*reg.dose]);
+    else if (reg.route === "iv_bolus") bolus.push([dt, 1, reg.dose]);
+    else if (reg.route === "iv_infusion"){ const d = reg.infusion_duration||1; inf.push([dt, dt+d, reg.dose/d]); }
+  }
+  const bpset = new Set([0, tEnd]);
+  bolus.forEach(b => { if (b[0] <= tEnd) bpset.add(b[0]); });
+  inf.forEach(w => { if (w[0] <= tEnd) bpset.add(w[0]); if (w[1] <= tEnd) bpset.add(w[1]); });
+  const bps = [...bpset].filter(b => b>=0 && b<=tEnd).sort((a,b)=>a-b);
+  const infAt = tm => inf.reduce((s,w)=> (w[0] <= tm && tm < w[1]) ? s + w[2] : s, 0);
+
+  let y = [0,0,0];
+  const T = [], CEN = [];
+  const N = 2400;
+  const baseStep = Math.max(tEnd / N, 1e-4);
+
+  for (let i=0;i<bps.length-1;i++){
+    const t0 = bps[i], t1 = bps[i+1];
+    for (const b of bolus) if (Math.abs(b[0]-t0) < 1e-9) y[b[1]] += b[2];
+    if (T.length === 0){ T.push(t0); CEN.push(y[1]); }
+    const rate = infAt((t0+t1)/2);
+    const args = [k10, k12, k21, ka, rate];
+    const span = t1 - t0;
+    const nsteps = Math.max(1, Math.ceil(span / baseStep));
+    const h = span / nsteps;
+    let tc = t0;
+    for (let s=0;s<nsteps;s++){ y = rk4(y, h, args); tc += h; T.push(tc); CEN.push(Math.max(0,y[1])); }
+  }
+  const conc = CEN.map(a => Math.max(0,a) / pk.Vc);
+  return { t: T, conc, doseTimes: times, k10 };
+}
+function effectSite(t, conc, ke0){
+  const ce = new Array(conc.length).fill(0);
+  for (let i=1;i<t.length;i++){
+    const dt = t[i]-t[i-1];
+    if (dt <= 0){ ce[i] = ce[i-1]; continue; }
+    const c0 = conc[i-1], m = (conc[i]-conc[i-1])/dt, e = Math.exp(-ke0*dt);
+    ce[i] = ce[i-1]*e + c0*(1-e) + m*(dt - (1-e)/ke0);
+  }
+  return ce;
+}
+function effectVal(c, pd){
+  c = Math.max(0, c);
+  switch (pd.model){
+    case "linear": return pd.E0 + pd.slope*c;
+    case "loglinear": return pd.E0 + pd.slope*Math.log(Math.max(c,1e-12));
+    case "emax": return pd.E0 + pd.Emax*c/(pd.EC50+c);
+    case "sigmoid_emax": { const ch = Math.pow(c,pd.hill); return pd.E0 + pd.Emax*ch/(Math.pow(pd.EC50,pd.hill)+ch); }
+    case "imax": return pd.E0 - pd.Imax*c/(pd.IC50+c);
+    case "sigmoid_imax": { const ch = Math.pow(c,pd.hill); return pd.E0 - pd.Imax*ch/(Math.pow(pd.IC50,pd.hill)+ch); }
+    default: return null;
+  }
+}
+function simulatePD(t, conc, pd){
+  if (!pd || pd.model === "none") return null;
+  const driver = (pd.ke0 != null && pd.ke0 > 0) ? effectSite(t, conc, pd.ke0) : conc;
+  return { driver, effect: driver.map(c => effectVal(c, pd)) };
+}
+function trapz(y, x){ let s=0; for (let i=1;i<y.length;i++) s += (y[i]+y[i-1])/2*(x[i]-x[i-1]); return s; }
+function terminalKel(t, c){
+  if (t.length < 3) return null;
+  let imax = 0; for (let i=1;i<c.length;i++) if (c[i] > c[imax]) imax = i;
+  const tt = [], cc = [];
+  for (let i=imax;i<t.length;i++){ if (c[i] > 0){ tt.push(t[i]); cc.push(c[i]); } }
+  if (tt.length < 3) return null;
+  const start = Math.max(0, Math.floor(tt.length*0.6));
+  const xs = tt.slice(start), ys = cc.slice(start).map(Math.log);
+  if (xs.length < 2) return null;
+  const n = xs.length;
+  let sx=0, sy=0, sxx=0, sxy=0;
+  for (let i=0;i<n;i++){ sx+=xs[i]; sy+=ys[i]; sxx+=xs[i]*xs[i]; sxy+=xs[i]*ys[i]; }
+  const denom = n*sxx - sx*sx; if (denom === 0) return null;
+  const slope = (n*sxy - sx*sy)/denom;
+  return slope < 0 ? -slope : null;
+}
+function computeMetrics(pkres, pdres, pk, reg){
+  const { t, conc } = pkres;
+  let imax = 0; for (let i=1;i<conc.length;i++) if (conc[i] > conc[imax]) imax = i;
+  const m = { Cmax: conc[imax], Tmax: t[imax], AUC_last: trapz(conc, t), C_last: conc[conc.length-1] };
+  const kel = terminalKel(t, conc);
+  if (kel){ m.half_life = Math.log(2)/kel; m.AUC_inf = m.AUC_last + conc[conc.length-1]/kel; }
+  m.model_half_life = Math.log(2)/pkres.k10;
+  if (reg.n_doses > 1 && reg.interval > 0){
+    m.accumulation = 1/(1-Math.exp(-pkres.k10*reg.interval));
+    const F = reg.route === "oral" ? (pk.F==null?1:pk.F) : 1;
+    m.avg_css = F*reg.dose/(pk.CL*reg.interval);
+  }
+  if (pdres){ m.peak_effect = Math.max(...pdres.effect); m.min_effect = Math.min(...pdres.effect); }
+  return m;
+}
+
+/* ======================================================================
+   SMILES -> molecular formula / weight (heavy atoms; no RDKit in-browser)
+   ====================================================================== */
+const ATOMIC = { H:1.008,B:10.811,C:12.011,N:14.007,O:15.999,F:18.998,P:30.974,S:32.06,Cl:35.45,Br:79.904,I:126.904,Na:22.990,K:39.098,Si:28.085,Se:78.971 };
+function parseSmiles(smiles){
+  if (!smiles || !smiles.trim()) return null;
+  let s = smiles.trim();
+  const counts = {};
+  const add = (el,n=1) => { if (ATOMIC[el] != null) counts[el] = (counts[el]||0)+n; };
+  // bracket atoms [....]
+  const brk = /\[(\d*)([A-Z][a-z]?)([^\]]*)\]/g; let mm;
+  while ((mm = brk.exec(s))) add(mm[2]);
+  s = s.replace(brk, "");
+  for (const el of ["Cl","Br"]){ let n=0; while (s.includes(el)){ s = s.replace(el,""); n++; } if (n) add(el,n); }
+  const arom = { c:"C", n:"N", o:"O", s:"S", p:"P", b:"B" };
+  for (const ch of s){ if (/[A-Za-z]/.test(ch)){ const el = arom[ch] || (ch===ch.toLowerCase()?ch.toUpperCase():ch); add(el); } }
+  const heavy = Object.entries(counts).filter(([e])=>e!=="H").reduce((a,[,n])=>a+n,0);
+  if (heavy === 0) return null;
+  const mw = Object.entries(counts).reduce((a,[e,n])=>a+ATOMIC[e]*n,0);
+  const order = ["C","H","N","O","F","P","S","Cl","Br","I"];
+  const els = Object.keys(counts).sort((a,b)=>{
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b);
+  });
+  const formula = els.map(e => e + (counts[e]>1?counts[e]:"")).join("");
+  return { formula, mw, heavy, counts };
+}
+
+/* ======================================================================
+   SVG line charts (theme-aware, crosshair hover)
+   ====================================================================== */
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function niceMax(v){
+  if (v <= 0) return 1;
+  const exp = Math.floor(Math.log10(v)), f = v/Math.pow(10,exp);
+  const nf = f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10;
+  return nf*Math.pow(10,exp);
+}
+function fmt(v){
+  if (v === 0) return "0";
+  const a = Math.abs(v);
+  if (a >= 1000) return v.toFixed(0);
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 10) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(2);
+  if (a >= 0.01) return v.toFixed(3);
+  return v.toExponential(1);
+}
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs){ const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+function drawChart(svg, cfg){
+  // cfg: { t, series:[{y,color,label}], yLabel, xLabel, doseTimes, band, tUnits }
+  const W = 720, H = 300;
+  const padL = 56, padR = 16, padT = 14, padB = 40;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const ink = cssVar("--ink"), muted = cssVar("--muted"), line = cssVar("--line");
+  const t = cfg.t;
+  const tMax = t[t.length-1] || 1;
+  let yMaxRaw = 0, yMinRaw = 0;
+  cfg.series.forEach(s => s.y.forEach(v => { if (v>yMaxRaw) yMaxRaw=v; if (v<yMinRaw) yMinRaw=v; }));
+  if (cfg.band){ if (cfg.band[1]>yMaxRaw) yMaxRaw = cfg.band[1]; }
+  let yMax = niceMax(yMaxRaw || 1);
+  let yMin = yMinRaw < 0 ? -niceMax(-yMinRaw) : 0;
+  if (yMax === yMin) yMax = yMin + 1;
+
+  const X = v => padL + (v/tMax)*(W-padL-padR);
+  const Y = v => H-padB - ((v-yMin)/(yMax-yMin))*(H-padT-padB);
+
+  // grid + y ticks
+  const yticks = 5;
+  for (let i=0;i<=yticks;i++){
+    const val = yMin + (yMax-yMin)*i/yticks;
+    const yy = Y(val);
+    svg.appendChild(el("line",{x1:padL,y1:yy,x2:W-padR,y2:yy,stroke:line,"stroke-width":1}));
+    const tx = el("text",{x:padL-8,y:yy+3.5,"text-anchor":"end","font-size":11,fill:muted,"font-family":"var(--font-mono)"});
+    tx.textContent = fmt(val); svg.appendChild(tx);
+  }
+  // x ticks
+  const xticks = 6;
+  for (let i=0;i<=xticks;i++){
+    const val = tMax*i/xticks, xx = X(val);
+    svg.appendChild(el("line",{x1:xx,y1:H-padB,x2:xx,y2:H-padB+4,stroke:muted,"stroke-width":1}));
+    const tx = el("text",{x:xx,y:H-padB+16,"text-anchor":"middle","font-size":11,fill:muted,"font-family":"var(--font-mono)"});
+    tx.textContent = fmt(val); svg.appendChild(tx);
+  }
+  // axis labels
+  const xl = el("text",{x:(padL+W-padR)/2,y:H-4,"text-anchor":"middle","font-size":11.5,fill:muted}); xl.textContent = cfg.xLabel; svg.appendChild(xl);
+  const yl = el("text",{x:14,y:(padT+H-padB)/2,"text-anchor":"middle","font-size":11.5,fill:muted,transform:`rotate(-90 14 ${(padT+H-padB)/2})`}); yl.textContent = cfg.yLabel; svg.appendChild(yl);
+
+  // therapeutic band
+  if (cfg.band){
+    const y1 = Y(Math.min(cfg.band[1], yMax)), y0 = Y(Math.max(cfg.band[0], yMin));
+    svg.appendChild(el("rect",{x:padL,y:y1,width:W-padL-padR,height:Math.max(0,y0-y1),fill:cssVar("--band")}));
+  }
+  // baseline at y=0 if in range
+  if (yMin < 0){ const z = Y(0); svg.appendChild(el("line",{x1:padL,y1:z,x2:W-padR,y2:z,stroke:muted,"stroke-width":1,"stroke-dasharray":"2 3"})); }
+
+  // dose markers
+  if (cfg.doseTimes) cfg.doseTimes.forEach(dt => {
+    if (dt <= tMax){ const xx = X(dt); svg.appendChild(el("line",{x1:xx,y1:padT,x2:xx,y2:H-padB,stroke:muted,"stroke-width":1,"stroke-dasharray":"2 4",opacity:.5})); }
+  });
+
+  // series lines
+  cfg.series.forEach(s => {
+    let d = "";
+    for (let i=0;i<t.length;i++){ d += (i===0?"M":"L") + X(t[i]).toFixed(1) + " " + Y(s.y[i]).toFixed(1) + " "; }
+    svg.appendChild(el("path",{d,fill:"none",stroke:s.color,"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"}));
+  });
+
+  // hover layer
+  const hoverLine = el("line",{x1:0,y1:padT,x2:0,y2:H-padB,stroke:ink,"stroke-width":1,opacity:0});
+  svg.appendChild(hoverLine);
+  const dots = cfg.series.map(s => { const c = el("circle",{r:3.5,fill:s.color,stroke:cssVar("--surface"),"stroke-width":1.5,opacity:0}); svg.appendChild(c); return c; });
+  const tip = el("g",{opacity:0});
+  const tipBg = el("rect",{rx:6,fill:cssVar("--surface"),stroke:line,"stroke-width":1,width:120,height:20});
+  tip.appendChild(tipBg);
+  const tipText = el("text",{"font-size":11,fill:ink,"font-family":"var(--font-mono)"});
+  tip.appendChild(tipText);
+  svg.appendChild(tip);
+
+  const rect = el("rect",{x:padL,y:padT,width:W-padL-padR,height:H-padT-padB,fill:"transparent"});
+  svg.appendChild(rect);
+
+  function toLocal(evt){
+    const pt = svg.createSVGPoint();
+    const src = evt.touches ? evt.touches[0] : evt;
+    pt.x = src.clientX; pt.y = src.clientY;
+    const ctm = svg.getScreenCTM().inverse();
+    return pt.matrixTransform(ctm);
+  }
+  function move(evt){
+    evt.preventDefault();
+    const loc = toLocal(evt);
+    const tv = Math.max(0, Math.min(tMax, (loc.x - padL)/(W-padL-padR)*tMax));
+    // nearest index
+    let lo=0, hi=t.length-1;
+    while (hi-lo>1){ const mid=(lo+hi)>>1; if (t[mid] < tv) lo=mid; else hi=mid; }
+    const idx = (tv - t[lo]) < (t[hi]-tv) ? lo : hi;
+    const xx = X(t[idx]);
+    hoverLine.setAttribute("x1",xx); hoverLine.setAttribute("x2",xx); hoverLine.setAttribute("opacity",.45);
+    const lines = [`t = ${fmt(t[idx])} ${cfg.tUnits}`];
+    cfg.series.forEach((s,i) => { dots[i].setAttribute("cx",xx); dots[i].setAttribute("cy",Y(s.y[idx])); dots[i].setAttribute("opacity",1); lines.push(`${s.short}: ${fmt(s.y[idx])}`); });
+    while (tipText.firstChild) tipText.removeChild(tipText.firstChild);
+    lines.forEach((ln,i) => { const ts = el("tspan",{x:0,dy:i===0?0:13}); ts.textContent = ln; tipText.appendChild(ts); });
+    const bw = 130, bh = 16 + lines.length*13;
+    let bx = xx + 10; if (bx + bw > W-padR) bx = xx - bw - 10;
+    const by = padT + 6;
+    tipBg.setAttribute("width",bw); tipBg.setAttribute("height",bh); tipBg.setAttribute("x",bx); tipBg.setAttribute("y",by);
+    tipText.setAttribute("x",bx+9); tipText.setAttribute("y",by+15);
+    tip.setAttribute("opacity",1);
+  }
+  function leave(){ hoverLine.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0)); tip.setAttribute("opacity",0); }
+  rect.addEventListener("mousemove", move);
+  rect.addEventListener("mouseleave", leave);
+  rect.addEventListener("touchmove", move, {passive:false});
+  rect.addEventListener("touchend", leave);
+}
+
+/* ======================================================================
+   UI wiring
+   ====================================================================== */
+const $ = id => document.getElementById(id);
+const state = { route: "oral" };
+
+function populateLibrary(){
+  const sel = $("drugSelect");
+  LIBRARY.forEach((d,i) => { const o = document.createElement("option"); o.value = i; o.textContent = d.name; sel.appendChild(o); });
+  const custom = document.createElement("option"); custom.value = "custom"; custom.textContent = "— Custom —"; sel.appendChild(custom);
+}
+function loadDrug(d){
+  $("smiles").value = d.smiles || "";
+  const pk = d.pk || {};
+  $("CL").value = pk.CL ?? ""; $("Vc").value = pk.Vc ?? "";
+  $("ka").value = pk.ka ?? ""; $("F").value = pk.F ?? 1; $("tlag").value = pk.tlag ?? 0;
+  if (pk.Q != null && pk.Vp != null){ $("ncomp").value = "2"; $("Q").value = pk.Q; $("Vp").value = pk.Vp; }
+  else { $("ncomp").value = "1"; }
+  const pd = d.pd || { model: "none" };
+  $("pdmodel").value = pd.model || "none";
+  $("E0").value = pd.E0 ?? 0; $("Emax").value = pd.Emax ?? 100; $("EC50").value = pd.EC50 ?? 5;
+  $("Imax").value = pd.Imax ?? 80; $("IC50").value = pd.IC50 ?? 2; $("hill").value = pd.hill ?? 1;
+  $("slope").value = pd.slope ?? 10; $("ke0").value = pd.ke0 ?? ""; $("effunits").value = pd.effect_units || "";
+  // sensible default regimen by route
+  const route = (pk.ka == null && pk.Q != null) ? "iv_bolus" : (pk.ka == null ? "iv_bolus" : "oral");
+  setRoute(pk.ka == null ? "iv_bolus" : "oral");
+  $("dose").value = defaultDose(d);
+  $("ndoses").value = 1; $("interval").value = 8;
+  $("tend").value = Math.max(24, Math.round((Math.log(2)/(pk.CL/pk.Vc))*5));
+  d._desc = d; // mark builtin
+}
+function defaultDose(d){
+  const n = (d.name||"").toLowerCase();
+  const map = { caffeine:100, ibuprofen:400, acetaminophen:500, theophylline:300, metformin:500, warfarin:5, propofol:150, gentamicin:120 };
+  return map[n] || 100;
+}
+function setRoute(r){
+  state.route = r;
+  document.querySelectorAll("#routeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.route === r ? "true" : "false"));
+  $("infWrap").classList.toggle("hidden", r !== "iv_infusion");
+  $("oralPk").classList.toggle("hidden", r !== "oral");
+}
+function readPK(){
+  const pk = { CL: +$("CL").value, Vc: +$("Vc").value };
+  if (state.route === "oral"){ pk.ka = +$("ka").value; pk.F = +$("F").value; pk.tlag = +$("tlag").value || 0; }
+  if ($("ncomp").value === "2"){ pk.Q = +$("Q").value; pk.Vp = +$("Vp").value; }
+  return pk;
+}
+function readPD(){
+  const model = $("pdmodel").value;
+  if (model === "none") return { model: "none" };
+  const pd = { model, E0:+$("E0").value, Emax:+$("Emax").value, EC50:+$("EC50").value,
+    Imax:+$("Imax").value, IC50:+$("IC50").value, hill:+$("hill").value, slope:+$("slope").value,
+    effect_units: $("effunits").value };
+  const ke0 = $("ke0").value; if (ke0 !== "" && +ke0 > 0) pd.ke0 = +ke0;
+  return pd;
+}
+function readReg(){
+  return { dose:+$("dose").value, route: state.route, interval:+$("interval").value,
+    n_doses: Math.max(1, Math.round(+$("ndoses").value)||1),
+    infusion_duration: +$("infdur").value };
+}
+function updatePDFields(){
+  const model = $("pdmodel").value;
+  const show = model !== "none";
+  $("pdFields").classList.toggle("hidden", !show);
+  $("pdCard").classList.toggle("hidden", !show);
+  document.querySelectorAll("#pdFields [data-pd]").forEach(elm => {
+    elm.classList.toggle("hidden", !elm.dataset.pd.split(" ").includes(model));
+  });
+}
+function updateTwoComp(){ $("twoComp").classList.toggle("hidden", $("ncomp").value !== "2"); }
+
+function renderStructure(){
+  const smiles = $("smiles").value.trim();
+  const idx = $("drugSelect").value;
+  const builtin = idx !== "custom" ? LIBRARY[+idx] : null;
+  const chips = $("descChips"); chips.innerHTML = "";
+  const note = $("descNote");
+  const parsed = parseSmiles(smiles);
+
+  if (builtin && builtin.smiles === smiles){
+    $("formula").innerHTML = subscriptFormula(builtin.formula || "—");
+    const add = (label, val, cls="") => { const c = document.createElement("span"); c.className = "chip "+cls; c.innerHTML = `${label} <b>${val}</b>`; chips.appendChild(c); };
+    add("MW", builtin.mw);
+    add("logP", builtin.logp);
+    add("TPSA", builtin.tpsa);
+    add("HBD", builtin.hbd); add("HBA", builtin.hba);
+    add("QED", builtin.qed);
+    add("Lipinski Ro5", builtin.lipinski_pass ? "pass" : `${builtin.lipinski_viol} viol.`, builtin.lipinski_pass ? "pass" : "fail");
+    note.textContent = builtin.notes || "Descriptors computed with RDKit.";
+  } else if (parsed){
+    $("formula").innerHTML = subscriptFormula(parsed.formula) + ` <span style="color:var(--muted);font-size:.8rem">(heavy atoms)</span>`;
+    const add = (label, val) => { const c = document.createElement("span"); c.className = "chip"; c.innerHTML = `${label} <b>${val}</b>`; chips.appendChild(c); };
+    add("Heavy MW", parsed.mw.toFixed(1));
+    add("Heavy atoms", parsed.heavy);
+    note.innerHTML = "Custom structure parsed in-browser: heavy-atom formula &amp; mass only (implicit H not counted). For exact MW, logP, TPSA, QED and Lipinski, register it with the Python package: <code>python -m alpha describe --smiles \"…\"</code>";
+  } else {
+    $("formula").textContent = smiles ? "Unparseable structure" : "—";
+    note.textContent = smiles ? "Could not parse this SMILES in-browser." : "Enter a SMILES string or pick a drug.";
+  }
+}
+function subscriptFormula(f){ return String(f).replace(/(\d+)/g, "<sub>$1</sub>"); }
+
+const METRIC_DEFS = [
+  ["Cmax", "Cₘₐₓ", "conc"],
+  ["Tmax", "Tₘₐₓ", "t"],
+  ["AUC_last", "AUC(last)", "auc"],
+  ["AUC_inf", "AUC(∞)", "auc"],
+  ["half_life", "t½ (terminal)", "t"],
+  ["model_half_life", "t½ (model)", "t"],
+  ["accumulation", "Accum. ratio", ""],
+  ["avg_css", "Avg Css", "conc"],
+  ["C_last", "C(end)", "conc"],
+  ["peak_effect", "Peak effect", "eff"],
+];
+function renderMetrics(m, conc_units, eff_units){
+  const box = $("metrics"); box.innerHTML = "";
+  const unitFor = u => u==="conc"?conc_units : u==="t"?"h" : u==="auc"?conc_units+"·h" : u==="eff"?(eff_units||""):"";
+  METRIC_DEFS.forEach(([key,label,u]) => {
+    if (m[key] == null || !isFinite(m[key])) return;
+    const d = document.createElement("div"); d.className = "metric";
+    d.innerHTML = `<div class="k">${label}</div><div class="v">${fmt(m[key])}<span class="u">${unitFor(u)}</span></div>`;
+    box.appendChild(d);
+  });
+}
+
+function recompute(){
+  const pk = readPK();
+  if (!(pk.CL > 0) || !(pk.Vc > 0)){ return; }
+  const reg = readReg();
+  if (!(reg.dose > 0)) return;
+  if (state.route === "oral" && !(pk.ka > 0)) return;
+  let tEnd = +$("tend").value; if (!(tEnd > 0)) tEnd = 24;
+  const pd = readPD();
+
+  $("doseV").textContent = reg.n_doses > 1 ? `×${reg.n_doses} q${fmt(reg.interval)}h` : "";
+
+  const pkres = simulatePK(pk, reg, tEnd);
+  const pdres = simulatePD(pkres.t, pkres.conc, pd);
+  const m = computeMetrics(pkres, pdres, pk, reg);
+
+  const conc_units = "mg/L", t_units = "h";
+  // therapeutic band
+  const twMin = $("twMin").value, twMax = $("twMax").value;
+  let band = null, twMsg = "Shade a target concentration band and report time-in-window.";
+  if (twMin !== "" && twMax !== "" && +twMax > +twMin){
+    band = [+twMin, +twMax];
+    let inWin = 0;
+    for (let i=1;i<pkres.t.length;i++){ const cm = (pkres.conc[i]+pkres.conc[i-1])/2; if (cm >= band[0] && cm <= band[1]) inWin += pkres.t[i]-pkres.t[i-1]; }
+    twMsg = `In target window ${((inWin/tEnd)*100).toFixed(0)}% of the time.`;
+  }
+  $("twNote").textContent = twMsg;
+
+  // PK chart
+  const pkSeries = [{ y: pkres.conc, color: cssVar("--accent"), short: "C" }];
+  $("pkLegend").innerHTML = `<span><i style="background:${cssVar("--accent")}"></i>Plasma conc. (${conc_units})</span>` +
+    (band ? `<span><i style="background:${cssVar("--band")};height:10px;border-radius:2px"></i>Target window</span>` : "");
+  drawChart($("pkChart"), { t: pkres.t, series: pkSeries, yLabel: `Concentration (${conc_units})`, xLabel: `Time (${t_units})`, doseTimes: pkres.doseTimes, band, tUnits: t_units });
+
+  // PD chart
+  if (pdres){
+    const eff = pd.effect_units || "effect";
+    const series = [{ y: pdres.effect, color: cssVar("--effect"), short: "E" }];
+    let legend = `<span><i style="background:${cssVar("--effect")}"></i>Effect${pd.effect_units?` (${pd.effect_units})`:""}</span>`;
+    if (pd.ke0){ series.push({ y: pdres.driver, color: cssVar("--ce"), short: "Ce" }); legend += `<span><i style="background:${cssVar("--ce")}"></i>Effect-site conc.</span>`; }
+    $("pdLegend").innerHTML = legend;
+    $("pdTitle").textContent = "Effect over time" + (pd.ke0 ? " (with effect-compartment delay)" : "");
+    // Note: when ke0 set, plot effect on its own scale; driver is a concentration, so only plot effect for a clean single axis
+    drawChart($("pdChart"), { t: pkres.t, series: [{ y: pdres.effect, color: cssVar("--effect"), short: "E" }], yLabel: eff, xLabel: `Time (${t_units})`, doseTimes: pkres.doseTimes, tUnits: t_units });
+  }
+  renderMetrics(m, conc_units, pd.effect_units);
+}
+
+/* ---- events ---- */
+function wire(){
+  populateLibrary();
+  $("drugSelect").addEventListener("change", e => {
+    const v = e.target.value;
+    if (v !== "custom"){ loadDrug(LIBRARY[+v]); }
+    updatePDFields(); updateTwoComp(); renderStructure(); recompute();
+  });
+  document.querySelectorAll("#routeSeg button").forEach(b => b.addEventListener("click", () => { setRoute(b.dataset.route); recompute(); }));
+  $("pdmodel").addEventListener("change", () => { updatePDFields(); recompute(); });
+  $("ncomp").addEventListener("change", () => { updateTwoComp(); recompute(); });
+  $("smiles").addEventListener("input", () => { $("drugSelect").value = "custom"; renderStructure(); });
+  // recompute on any input
+  document.querySelectorAll("input, select").forEach(inp => {
+    if (inp.id === "smiles") return;
+    inp.addEventListener("input", recompute);
+  });
+  // theme toggle
+  $("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const sysDark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = cur ? (cur === "dark" ? "light" : "dark") : (sysDark ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("alpha-theme", next); } catch(e){}
+    recompute();
+  });
+  try { const saved = localStorage.getItem("alpha-theme"); if (saved) document.documentElement.setAttribute("data-theme", saved); } catch(e){}
+
+  // initial: load Theophylline (nice multiple-dose demo)
+  const start = LIBRARY.findIndex(d => d.name === "Theophylline");
+  $("drugSelect").value = start >= 0 ? start : 0;
+  loadDrug(LIBRARY[start >= 0 ? start : 0]);
+  $("ndoses").value = 6; $("interval").value = 8; $("tend").value = 72; $("dose").value = 300;
+  updatePDFields(); updateTwoComp(); renderStructure(); recompute();
+  window.addEventListener("resize", () => recompute());
+}
+wire();
+</script>

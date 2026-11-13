@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alpha-pkpd"
+version = "0.1.0"
+description = "In silico drug testing: register drugs by chemical structure and simulate their pharmacokinetics (PK) and pharmacodynamics (PD)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+chem = ["rdkit>=2023.3"]
+plot = ["matplotlib>=3.6"]
+all = ["rdkit>=2023.3", "matplotlib>=3.6"]
+test = ["pytest>=7.0"]
+
+[project.scripts]
+alpha = "alpha.cli:main"
+
+[tool.setuptools]
+packages = ["alpha"]
+
+[tool.setuptools.package-data]
+alpha = ["data/*.json"]
