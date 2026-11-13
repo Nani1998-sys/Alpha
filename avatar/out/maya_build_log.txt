@@ -1,0 +1,54 @@
+[make_character] Blender 4.5.16 LTS | MPFB package bl_ext.user_default.mpfb
+[make_character] assets (all must be CC0):
+[make_character]   skin         cutoff3d_indian_female_skin/cutoff3d_indian_female_skin.mhmat  pack=skins01                  CC0
+[make_character]   eyes         high-poly/high-poly.mhclo                                      pack=makehuman_system_assets  CC0
+[make_character]   eye_material materials/brown.mhmat                                          pack=makehuman_system_assets  CC0
+[make_character]   eyebrows     eyebrow012/eyebrow012.mhclo                                    pack=makehuman_system_assets  CC0
+[make_character]   eyelashes    eyelashes01/eyelashes01.mhclo                                  pack=makehuman_system_assets  CC0
+[make_character]   teeth        teeth_base/teeth_base.mhclo                                    pack=makehuman_system_assets  CC0
+[make_character]   tongue       tongue01/tongue01.mhclo                                        pack=makehuman_system_assets  CC0
+[make_character]   hair         toigo_blunt_bob/toigo_blunt_bob.mhclo                          pack=hair01                   CC0
+[make_character]   clothes      female_elegantsuit01/female_elegantsuit01.mhclo                pack=makehuman_system_assets  CC0
+[make_character] added eyes high-poly/high-poly.mhclo tris=2040
+[make_character] added eyebrows eyebrow012/eyebrow012.mhclo tris=192
+[make_character] added eyelashes eyelashes01/eyelashes01.mhclo tris=368
+[make_character] added teeth teeth_base/teeth_base.mhclo tris=7120
+[make_character] added tongue tongue01/tongue01.mhclo tris=448
+[make_character] added hair toigo_blunt_bob/toigo_blunt_bob.mhclo tris=2858
+[make_character] added clothes female_elegantsuit01/female_elegantsuit01.mhclo tris=4192
+[make_character] removed 490 transparent faces from eyes
+[make_character] shape keys per exported mesh:
+[make_character]   body       tris=21746  keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   eyes       tris=1060   keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   eyebrows   tris=192    keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   eyelashes  tris=368    keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   teeth      tris=7120   keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   tongue     tris=448    keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
+[make_character]   hair       tris=2858   keys=0 
+[make_character]   clothes    tris=4192   keys=0 
+[make_character] materials:
+[make_character]   skin       OPAQUE cutoff=- doubleSided=False
+[make_character]   eyes       OPAQUE cutoff=- doubleSided=False
+[make_character]   eyebrows   BLEND  cutoff=- doubleSided=True
+[make_character]   eyelashes  BLEND  cutoff=- doubleSided=True
+[make_character]   teeth      OPAQUE cutoff=- doubleSided=False
+[make_character]   tongue     OPAQUE cutoff=- doubleSided=False
+[make_character]   hair       MASK   cutoff=0.5 doubleSided=True
+[make_character]   clothes    OPAQUE cutoff=- doubleSided=True
+[make_character] images:
+[make_character]   skin_color         image/jpeg 2048x2048   463.6 kB
+[make_character]   eyes_color         image/jpeg 1024x1024    62.6 kB
+[make_character]   eyebrows_color     image/png   512x512     94.4 kB
+[make_character]   eyelashes_color    image/png   512x512    107.9 kB
+[make_character]   teeth_color        image/jpeg 1024x1024   136.2 kB
+[make_character]   tongue_color       image/jpeg 1024x1024    45.1 kB
+[make_character]   hair_normal        image/jpeg 1024x1024   206.6 kB
+[make_character]   hair_color         image/png  1024x1024  1196.8 kB
+[make_character]   clothes_normal     image/jpeg 1024x1024    71.2 kB
+[make_character]   clothes_color      image/jpeg 1024x1024    83.4 kB
+[make_character] bounds  x -0.521..0.521  y 0.000..1.713  z -0.102..0.320   height 1.713 m
+[make_character] totals  37984 triangles, 4.23 MB, 8 meshes, 8 materials, 10 images
+[make_character] preview /tmp/claude-0/-home-user-Alpha/982710f0-0d18-5629-8213-0700314b8234/scratchpad/out/prev/maya_front.png
+[make_character] preview /tmp/claude-0/-home-user-Alpha/982710f0-0d18-5629-8213-0700314b8234/scratchpad/out/prev/maya_three_quarter.png
+[make_character] preview /tmp/claude-0/-home-user-Alpha/982710f0-0d18-5629-8213-0700314b8234/scratchpad/out/prev/maya_strip_jawOpen_mouthPucker_mouthClose_eyeBlinkLeft.png
+[make_character] OK /tmp/claude-0/-home-user-Alpha/982710f0-0d18-5629-8213-0700314b8234/scratchpad/out/maya.glb
