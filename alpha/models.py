@@ -190,6 +190,9 @@ class Drug:
     pk: Optional[PKParameters] = None
     pd: Optional[PDParameters] = None
     notes: str = ""
+    target_name: str = ""        # the protein this drug acts on
+    target_pdb: str = ""         # a PDB ID for that protein, for docking
+    target_ligand: str = ""      # residue name of a co-crystallised ligand
 
     # ---- serialisation helpers -------------------------------------------
     def to_dict(self) -> Dict[str, Any]:
@@ -208,4 +211,7 @@ class Drug:
             pk=pk,
             pd=pd,
             notes=d.get("notes", ""),
+            target_name=d.get("target_name", ""),
+            target_pdb=d.get("target_pdb", ""),
+            target_ligand=d.get("target_ligand", ""),
         )

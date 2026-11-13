@@ -14,6 +14,19 @@ from alpha.registry import DEFAULT_DB, DrugRegistry  # noqa: E402
 
 SEED = [
     dict(
+        name="Indinavir",
+        smiles="CC(C)(C)NC(=O)[C@@H]1CN(Cc2cccnc2)CCN1C[C@@H](O)C[C@@H](Cc1ccccc1)"
+               "C(=O)N[C@H]1c2ccccc2C[C@H]1O",
+        pk=PKParameters(CL=50.0, Vc=130.0, ka=2.0, F=0.65),
+        pd=PDParameters(model="imax", E0=100, Imax=99, IC50=3.4e-4,
+                        effect_units="% protease activity"),
+        target_name="HIV-1 protease",
+        target_pdb="1HSG",
+        target_ligand="MK1",
+        notes="HIV protease inhibitor. Co-crystallised in PDB 1HSG, so it can be "
+              "redocked into its own target. Measured Ki ~0.56 nM.",
+    ),
+    dict(
         name="Caffeine",
         smiles="Cn1cnc2c1c(=O)n(C)c(=O)n2C",
         pk=PKParameters(CL=6.0, Vc=36.0, ka=4.0, F=0.99),
@@ -23,11 +36,15 @@ SEED = [
     ),
     dict(
         name="Ibuprofen",
+        target_name="Cyclooxygenase-2 (COX-2)",
+        target_pdb="4PH9",
+        target_ligand="IBP",
         smiles="CC(C)Cc1ccc(C(C)C(=O)O)cc1",
         pk=PKParameters(CL=3.5, Vc=10.0, ka=1.5, F=0.9),
         pd=PDParameters(model="sigmoid_emax", E0=0, Emax=100, EC50=10.0, hill=1.5,
                         effect_units="% analgesia"),
-        notes="NSAID. Short half-life (~2 h).",
+        notes="NSAID. Short half-life (~2 h). Co-crystallised in PDB 4PH9 (ligand IBP); "
+              "COX-2 needs its heme cofactor, so dock with --keep-waters HEM.",
     ),
     dict(
         name="Acetaminophen",
@@ -39,6 +56,7 @@ SEED = [
     ),
     dict(
         name="Theophylline",
+        target_name="Phosphodiesterase / adenosine receptor",
         smiles="Cn1c(=O)c2[nH]cnc2n(C)c1=O",
         pk=PKParameters(CL=2.8, Vc=35.0, ka=3.5, F=1.0),
         pd=PDParameters(model="emax", E0=0, Emax=100, EC50=10.0,
@@ -47,6 +65,7 @@ SEED = [
     ),
     dict(
         name="Metformin",
+        target_name="AMPK pathway (indirect)",
         smiles="CN(C)C(=N)NC(=N)N",
         pk=PKParameters(CL=30.0, Vc=90.0, ka=1.0, F=0.55),
         pd=PDParameters(model="emax", E0=0, Emax=40, EC50=1.0,
@@ -55,6 +74,7 @@ SEED = [
     ),
     dict(
         name="Warfarin",
+        target_name="Vitamin K epoxide reductase (VKORC1)",
         smiles="CC(=O)CC(c1ccccc1)C1=C(O)c2ccccc2OC1=O",
         pk=PKParameters(CL=0.2, Vc=8.0, ka=1.5, F=0.95),
         pd=PDParameters(model="imax", E0=100, Imax=70, IC50=1.5,

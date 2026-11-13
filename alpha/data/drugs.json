@@ -1,6 +1,79 @@
 {
   "drugs": [
     {
+      "name": "Indinavir",
+      "smiles": "CC(C)(C)NC(=O)[C@@H]1CN(Cc2cccnc2)CCN1C[C@@H](O)C[C@@H](Cc1ccccc1)C(=O)N[C@H]1c2ccccc2C[C@H]1O",
+      "inchikey": "CBVCZFGXHXORBI-PXQQMZJSSA-N",
+      "descriptors": {
+        "canonical_smiles": "CC(C)(C)NC(=O)[C@@H]1CN(Cc2cccnc2)CCN1C[C@@H](O)C[C@@H](Cc1ccccc1)C(=O)N[C@H]1c2ccccc2C[C@H]1O",
+        "formula": "C36H47N5O4",
+        "mol_weight": 613.8,
+        "logp": 2.87,
+        "tpsa": 118.03,
+        "h_bond_donors": 4,
+        "h_bond_acceptors": 7,
+        "rotatable_bonds": 11,
+        "rings": 5,
+        "aromatic_rings": 3,
+        "heavy_atoms": 45,
+        "fraction_csp3": 0.472,
+        "molar_refractivity": 174.07,
+        "qed": 0.263,
+        "inchikey": "CBVCZFGXHXORBI-PXQQMZJSSA-N",
+        "backend": "rdkit",
+        "drug_likeness": {
+          "lipinski": {
+            "violations": 1,
+            "pass": true,
+            "flags": {
+              "mw_<=500": false,
+              "logp_<=5": true,
+              "hbd_<=5": true,
+              "hba_<=10": true
+            }
+          },
+          "veber": {
+            "pass": false,
+            "flags": {
+              "rotatable_bonds_<=10": false,
+              "tpsa_<=140": true
+            }
+          }
+        },
+        "heuristics": {
+          "oral_absorption": "possible liability (outside Lipinski/Veber space)",
+          "cns_penetration": "likely low CNS penetration (rule of thumb)",
+          "size_class": "beyond Rule-of-5 (large molecule)",
+          "disclaimer": "Heuristics are rules of thumb for triage/education only; they do NOT predict real ADME. Provide measured PK/PD parameters for simulation."
+        }
+      },
+      "pk": {
+        "CL": 50.0,
+        "Vc": 130.0,
+        "ka": 2.0,
+        "F": 0.65,
+        "tlag": 0.0,
+        "Q": null,
+        "Vp": null
+      },
+      "pd": {
+        "model": "imax",
+        "E0": 100,
+        "Emax": null,
+        "EC50": null,
+        "Imax": 99,
+        "IC50": 0.00034,
+        "hill": 1.0,
+        "slope": null,
+        "ke0": null,
+        "effect_units": "% protease activity"
+      },
+      "notes": "HIV protease inhibitor. Co-crystallised in PDB 1HSG, so it can be redocked into its own target. Measured Ki ~0.56 nM.",
+      "target_name": "HIV-1 protease",
+      "target_pdb": "1HSG",
+      "target_ligand": "MK1"
+    },
+    {
       "name": "Caffeine",
       "smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
       "inchikey": "RYYVLZVUVIJVGH-UHFFFAOYSA-N",
@@ -68,7 +141,10 @@
         "ke0": null,
         "effect_units": "alertness (0-10)"
       },
-      "notes": "CNS stimulant. Illustrative PK (~5 h half-life)."
+      "notes": "CNS stimulant. Illustrative PK (~5 h half-life).",
+      "target_name": "",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Ibuprofen",
@@ -138,7 +214,10 @@
         "ke0": null,
         "effect_units": "% analgesia"
       },
-      "notes": "NSAID. Short half-life (~2 h)."
+      "notes": "NSAID. Short half-life (~2 h). Co-crystallised in PDB 4PH9 (ligand IBP); COX-2 needs its heme cofactor, so dock with --keep-waters HEM.",
+      "target_name": "Cyclooxygenase-2 (COX-2)",
+      "target_pdb": "4PH9",
+      "target_ligand": "IBP"
     },
     {
       "name": "Acetaminophen",
@@ -208,7 +287,10 @@
         "ke0": null,
         "effect_units": "% antipyresis"
       },
-      "notes": "Analgesic/antipyretic (paracetamol)."
+      "notes": "Analgesic/antipyretic (paracetamol).",
+      "target_name": "",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Theophylline",
@@ -278,7 +360,10 @@
         "ke0": null,
         "effect_units": "% bronchodilation"
       },
-      "notes": "Narrow therapeutic index; target ~10-20 mg/L."
+      "notes": "Narrow therapeutic index; target ~10-20 mg/L.",
+      "target_name": "Phosphodiesterase / adenosine receptor",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Metformin",
@@ -348,7 +433,10 @@
         "ke0": null,
         "effect_units": "% HGP suppression"
       },
-      "notes": "Renally cleared antihyperglycemic."
+      "notes": "Renally cleared antihyperglycemic.",
+      "target_name": "AMPK pathway (indirect)",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Warfarin",
@@ -418,7 +506,10 @@
         "ke0": 0.02,
         "effect_units": "% clotting activity"
       },
-      "notes": "Anticoagulant; very long half-life, delayed effect (ke0)."
+      "notes": "Anticoagulant; very long half-life, delayed effect (ke0).",
+      "target_name": "Vitamin K epoxide reductase (VKORC1)",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Propofol",
@@ -488,7 +579,10 @@
         "ke0": 0.5,
         "effect_units": "% hypnosis"
       },
-      "notes": "IV anesthetic; two-compartment; rapid onset/offset."
+      "notes": "IV anesthetic; two-compartment; rapid onset/offset.",
+      "target_name": "",
+      "target_pdb": "",
+      "target_ligand": ""
     },
     {
       "name": "Gentamicin",
@@ -558,7 +652,10 @@
         "ke0": null,
         "effect_units": "% bactericidal"
       },
-      "notes": "Aminoglycoside (IV); concentration-dependent killing."
+      "notes": "Aminoglycoside (IV); concentration-dependent killing.",
+      "target_name": "",
+      "target_pdb": "",
+      "target_ligand": ""
     }
   ]
 }

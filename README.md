@@ -1,21 +1,33 @@
 # Alpha — in silico drug testing (PK/PD)
 
-**Alpha** is a computational pharmacology platform. You register a drug **just by
-giving its chemical structure**, attach its **pharmacokinetic (PK)** and
-**pharmacodynamic (PD)** parameters, and simulate how the drug behaves in the
-body under any dosing regimen — concentration over time, effect over time, and
-the standard exposure metrics (Cmax, Tmax, AUC, half-life, accumulation).
+**Alpha** is a computational pharmacology platform that runs the chain from
+structure to dose:
 
-It is built on well-established, transparent pharmacometric models (compartmental
-PK ODEs + Emax/Hill PD) and on [RDKit](https://www.rdkit.org/) for cheminformatics.
+> **chemical structure → 3D protein target → docked pose → predicted potency → PK/PD time course**
+
+You register a drug **just by giving its chemical structure**, optionally **dock
+it into a real protein structure in 3D**, attach its **pharmacokinetic (PK)** and
+**pharmacodynamic (PD)** parameters, and simulate how it behaves in the body
+under any dosing regimen — concentration over time, effect over time, and the
+standard exposure metrics (Cmax, Tmax, AUC, half-life, accumulation).
+
+It is built on well-established, transparent tools: compartmental PK solved
+exactly with a matrix exponential, Emax/Hill PD, [RDKit](https://www.rdkit.org/)
+for cheminformatics, [AutoDock Vina](https://vina.scripps.edu/) for docking,
+structures from the [RCSB PDB](https://www.rcsb.org/) and
+[AlphaFold DB](https://alphafold.ebi.ac.uk/), and
+[3Dmol.js](https://3dmol.csb.pitt.edu/) for interactive 3D.
 
 > ⚠️ **Scope & disclaimer.** Alpha is a **modelling and simulation / teaching
 > tool**. It simulates PK/PD from parameters *you provide or fit from data*. It
 > does **not** predict clinical safety or efficacy, and the structure-based
 > "heuristics" it reports (e.g. oral-absorption / CNS flags) are rules of thumb,
-> **not** validated ADME predictions. Nothing here is medical advice or a
-> substitute for laboratory, preclinical, or clinical testing. The bundled drug
-> parameters are *illustrative, literature-approximate* figures for demos only.
+> **not** validated ADME predictions. Docking predicts *binding geometry*, and
+> its scores rank poses rather than measuring affinity: Vina's error is roughly
+> 2–3 kcal/mol, over two orders of magnitude in Kd, and the top-scored pose is
+> not always the correct one. Nothing here is medical advice or a substitute for
+> laboratory, preclinical, or clinical testing. The bundled drug parameters are
+> *illustrative, literature-approximate* figures for demos only.
 
 ---
 
@@ -29,7 +41,11 @@ PK ODEs + Emax/Hill PD) and on [RDKit](https://www.rdkit.org/) for cheminformati
 | **Test dosing regimens** | Single or multiple dosing; get the full concentration- and effect-time course. |
 | **Get exposure metrics** | Cmax, Tmax, AUC(last)/AUC(∞), terminal half-life, accumulation ratio, average steady-state concentration. |
 | **Store a library of drugs** | A simple JSON database you can grow, query, and version-control. |
-| **Visualise** | matplotlib plots, CSV/JSON export, and an interactive web explorer. |
+| **Fetch a 3D protein target** | By PDB ID from the RCSB PDB (experimental), or by UniProt accession from AlphaFold DB (predicted, with pLDDT confidence). Cached on disk, so it works offline afterwards. |
+| **Dock the molecule into it** | AutoDock Vina, with the ligand prepared from SMILES by RDKit + Meeko and the search box placed from a co-crystallised ligand. Reports every pose, its score, an estimated Kd, and the residues it contacts. |
+| **See it in 3D** | Self-contained interactive pages: protein cartoon, binding-site residues, and each docked pose. |
+| **Turn a score into potency** | Convert a docking score to an EC50/IC50 estimate and feed it straight into the PD model — clearly labelled as order-of-magnitude. |
+| **Visualise** | matplotlib plots, CSV/JSON export, and an interactive web explorer with a live 3D docking panel. |
 
 ---
 
@@ -97,6 +113,68 @@ A seed library of 8 well-known drugs ships in `alpha/data/drugs.json`
 elsewhere, pass `--db my_drugs.json` (before or after the command) or set the
 `ALPHA_DB` environment variable.
 
+## Protein structures, docking and 3D
+
+```bash
+# Find a target
+python -m alpha search-pdb "HIV-1 protease indinavir"
+
+# Inspect a structure (experimental, from the RCSB PDB)
+python -m alpha fetch --pdb 1HSG
+python -m alpha fetch --pdb 1HSG --waters          # waters bridging ligand and protein
+python -m alpha fetch --pdb 1HSG --view3d hiv.html # interactive 3D
+
+# Or a predicted structure from AlphaFold, by UniProt accession
+python -m alpha fetch --uniprot P00533 --view3d egfr.html
+
+# Dock. Indinavir ships with its target stored, so this needs no coordinates:
+python -m alpha dock --name Indinavir --keep-residues B:308 \
+  --exhaustiveness 16 --view3d docked.html --sdf poses.sdf
+
+# Any molecule into any target, with the box taken from a bound ligand:
+python -m alpha dock --smiles "CC(C)Cc1ccc(C(C)C(=O)O)cc1" --ligand-name Ibuprofen \
+  --pdb 4PH9 --ref-ligand IBP --keep-waters HEM --view3d cox2.html
+```
+
+From Python:
+
+```python
+from alpha import fetch_pdb, dock, view_docking, save_html, pd_from_docking
+
+target = fetch_pdb("1HSG")                       # HIV-1 protease + indinavir
+water  = target.bridging_waters(target.get_ligand("MK1"))[0]["residue"]
+result = dock(target, INDINAVIR_SMILES, reference_ligand="MK1",
+              keep_residues=[water], exhaustiveness=16)
+
+print(result.best_affinity, result.best.kd_text())          # -10.63 kcal/mol, 16.1 nM
+print([c.label for c in result.best.contacts][:4])          # ASP25B, GLY48A, ASP29A, ASP25A
+save_html(view_docking(result, target), "docked.html")
+
+pd, note = pd_from_docking(result, model="imax", E0=100, Emax=99,
+                           molecular_weight=613.8)          # -> PD parameters
+```
+
+**How the docking works.** The molecule is built in 3D from SMILES (RDKit
+ETKDGv3 + MMFF94), typed and given its rotatable bonds by Meeko, and written as
+PDBQT. The receptor is stripped of solvent and other ligands — optionally
+keeping a named structural water or cofactor — protonated at a chosen pH and
+charged by Open Babel. The search box is centred on a co-crystallised ligand and
+padded. AutoDock Vina then searches, and each returned pose is rebuilt as a real
+molecule so its contacting residues can be listed.
+
+**How good is it?** `tests/test_docking.py` redocks indinavir into its own
+crystal structure (1HSG) and asserts that a pose within 2 Å of the
+crystallographic geometry comes back. It does — Vina reproduces the pose to
+**0.8 Å**. But it ranked that pose *second*, not first, and the estimated Kd
+(16 nM) is about 30× weaker than the measured Ki (0.56 nM). That is normal, and
+it is why the tool shows you every pose with its contacts instead of a single
+answer.
+
+**AlphaFold structures are predictions.** Every residue carries a pLDDT
+confidence score, which Alpha reports and the 3D viewer colours with AlphaFold's
+own scheme. Regions below 70 are unreliable and below 50 are often intrinsically
+disordered; docking into them is not meaningful.
+
 ## The models (what's under the hood)
 
 **Pharmacokinetics** — amounts are integrated as ODEs and concentration is
@@ -154,6 +232,9 @@ alpha/
   registry.py   JSON drug database (add by structure)
   report.py     text reports + matplotlib plots
   cli.py        command-line interface
+  structure.py  fetch/parse protein structures (RCSB PDB, AlphaFold DB)
+  docking.py    AutoDock Vina docking + score-to-potency conversion
+  viewer3d.py   interactive 3D viewers (3Dmol.js)
   data/         seed drug library
 examples/       quickstart script
 scripts/        seed-database builder
@@ -168,9 +249,18 @@ pip install pytest
 python -m pytest -q
 ```
 
-101 tests: analytical validation of the PK engine, PD models, the SMILES parser
+138 tests: analytical validation of the PK engine, PD models, the SMILES parser
 (checked against RDKit on 47 real drugs, plus 17 malformed inputs it must
-reject), the drug registry and the command line.
+reject), structure parsing and pocket detection, docking maths and the 3D
+viewers, the drug registry and the command line.
+
+The redocking validation actually runs AutoDock Vina and takes about a minute,
+so it is marked `slow` and excluded by default:
+
+```bash
+python -m pytest -q                 # fast tests
+python -m pytest -q -m slow         # the real redocking run
+```
 
 ## License
 

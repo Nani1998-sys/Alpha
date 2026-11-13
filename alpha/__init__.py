@@ -22,14 +22,30 @@ Quick start
 from __future__ import annotations
 
 from .chem import analyze_structure, have_rdkit
+from .docking import (
+    DockingPose,
+    DockingResult,
+    dock,
+    docking_available,
+    ligand_3d_from_smiles,
+    pd_from_docking,
+)
 from .models import Drug, DosingRegimen, PDParameters, PKParameters
 from .pd import effect_from_concentration, simulate_pd
 from .pk import PKResult, simulate_pk
 from .registry import DrugRegistry
 from .report import plot_simulation, text_report
 from .simulate import SimulationResult, compute_nca, simulate_drug
+from .structure import (
+    ProteinStructure,
+    fetch_alphafold,
+    fetch_pdb,
+    parse_pdb,
+    search_pdb,
+)
+from .viewer3d import save_html, view_docking, view_structure
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Drug",
@@ -48,5 +64,20 @@ __all__ = [
     "compute_nca",
     "plot_simulation",
     "text_report",
+    # structures, docking and 3D
+    "ProteinStructure",
+    "fetch_pdb",
+    "fetch_alphafold",
+    "search_pdb",
+    "parse_pdb",
+    "dock",
+    "DockingResult",
+    "DockingPose",
+    "docking_available",
+    "ligand_3d_from_smiles",
+    "pd_from_docking",
+    "view_structure",
+    "view_docking",
+    "save_html",
     "__version__",
 ]

@@ -1,11 +1,42 @@
-# Core numerical stack (required). The PK engine solves the model exactly
-# with a matrix exponential, so NumPy is the only hard dependency.
+# ---------------------------------------------------------------------------
+# Core (required). The PK engine solves the model exactly with a matrix
+# exponential, so NumPy is the only hard dependency.
+# ---------------------------------------------------------------------------
 numpy>=1.24
 
-# Chemistry: full molecular descriptors (logP, TPSA, QED, drug-likeness).
-# Strongly recommended. Without RDKit, Alpha still parses structures with its
-# built-in SMILES reader (formula, molecular weight, atom and ring counts).
+# ---------------------------------------------------------------------------
+# Chemistry (strongly recommended): full molecular descriptors - logP, TPSA,
+# QED, drug-likeness - and the 3D conformers used for docking. Without RDKit,
+# Alpha still reads structures with its own built-in SMILES parser (formula,
+# molecular weight, atom and ring counts).
+# ---------------------------------------------------------------------------
 rdkit>=2023.3
 
-# Plotting (optional, needed for `--plot` / plot_simulation)
+# ---------------------------------------------------------------------------
+# Plotting (optional): needed for `--plot` and plot_simulation().
+# ---------------------------------------------------------------------------
 matplotlib>=3.6
+
+# ---------------------------------------------------------------------------
+# Docking (optional): prepares ligands for AutoDock Vina.
+# ---------------------------------------------------------------------------
+meeko>=0.5
+gemmi>=0.6
+
+# Docking also needs two programs that are NOT Python packages. Install them
+# with conda or your system package manager:
+#
+#   AutoDock Vina   conda install -c conda-forge vina
+#                   apt install autodock-vina
+#                   or a binary from
+#                   https://github.com/ccsb-scripps/AutoDock-Vina/releases
+#
+#   Open Babel      conda install -c conda-forge openbabel
+#                   apt install openbabel
+#
+# Check what is detected with:  python -c "from alpha.docking import
+# docking_available as d; print(d())"
+#
+# Fetching protein structures (RCSB PDB, AlphaFold DB) and the 3D viewers
+# need nothing extra - they use the standard library and load 3Dmol.js from a
+# CDN in the browser.

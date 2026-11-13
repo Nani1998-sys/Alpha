@@ -57,6 +57,9 @@ class DrugRegistry:
         pk: Optional[PKParameters] = None,
         pd: Optional[PDParameters] = None,
         notes: str = "",
+        target_name: str = "",
+        target_pdb: str = "",
+        target_ligand: str = "",
         overwrite: bool = False,
     ) -> Drug:
         """Add (or replace) a drug.
@@ -88,6 +91,9 @@ class DrugRegistry:
             pk=pk,
             pd=pd,
             notes=notes,
+            target_name=target_name,
+            target_pdb=target_pdb,
+            target_ligand=target_ligand,
         )
         self._drugs[key] = drug
         return drug
