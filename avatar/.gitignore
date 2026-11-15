@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+# the repo root ignores *.png; keep the avatar preview images
+!previews/*.png
