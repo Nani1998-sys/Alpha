@@ -142,10 +142,10 @@ same: build it with `--kind maya_pro_soft` if you prefer that look.
 | Face units | 52 ARKit targets | faceunits01 |
 
 The face is `FACE_STRIKING` in the script, built on `FACE_REFINED`: a slim oval head with a
-defined, tapered jaw and chin, strong cheekbones with a slight hollow below them, lifted almond
-eyes, level brows set a little lower, a straight nose with a refined tip, full lips with a
-sharp cupid's bow, and a longer neck. Make-up adds light contour under the cheekbones, a
-highlight on top of them, and a stronger lash line.
+defined, tapered jaw and chin, soft cheeks (cheekbones deliberately not prominent), lifted
+almond eyes, level brows set a little lower, a straight nose with a refined tip, full lips with a
+sharp cupid's bow, and a longer neck. Make-up adds a stronger lash line and a deeper rose
+lip; the contour and highlight regions exist in the code but are switched off for this look.
 
 A realism pass sits on top, because perfect faces read as CG:
 - **Asymmetry:** slight left/right differences in the brows, eyes, cheek, mouth, nose and jaw.

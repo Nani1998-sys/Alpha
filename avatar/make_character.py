@@ -154,13 +154,14 @@ FACE_REFINED = {
     "lr-ear-scale-decr": 0.20,
 }
 
-# More striking, still professional: stronger cheekbones with a slight hollow below, a defined
+# More striking, still professional: soft cheeks (no prominent cheekbones), a defined
 # (not wider) jaw and chin, more lifted almond eyes, level brows set a little lower, a straighter
 # nose with more projection, sharper lip line, composed rather than sweet. Generic face.
 FACE_STRIKING = dict(FACE_REFINED, **{
     "head-oval": 0.45, "head-invertedtriangular": 0.28, "head-scale-horiz-decr": 0.15,
     "chin-width-decr": 0.42, "chin-bones-decr": 0.25, "chin-prominent-incr": 0.22, "chin-triangle": 0.25,
-    "lr-cheek-bones-incr": 0.55, "lr-cheek-inner-decr": 0.35, "lr-cheek-volume-decr": 0.30, "lr-cheek-trans-up": 0.20,
+    # cheekbones kept soft on request: no hollows, no lift
+    "lr-cheek-bones-incr": 0.10, "lr-cheek-inner-decr": 0.0, "lr-cheek-volume-decr": 0.12, "lr-cheek-trans-up": 0.0,
     "forehead-temple-decr": 0.15,
     "lr-eye-scale-incr": 0.12, "lr-eye-corner2-up": 0.30, "lr-eye-height2-incr": 0.0, "lr-eye-height2-decr": 0.04,
     "eyebrows-angle-up": 0.18, "eyebrows-trans-up": 0.0, "eyebrows-trans-down": 0.06,
@@ -217,7 +218,7 @@ PRESETS["maya_pro"].update({
 
 # Real faces are never mirror-symmetric. MPFB's asymmetry targets, one side each, kept small.
 FACE_ASYMMETRY = {
-    "asym-brown-1-l": 0.25, "asym-eye-2-r": 0.20, "asym-eye-5-l": 0.15, "asym-cheek-1-l": 0.15,
+    "asym-brown-1-l": 0.25, "asym-eye-2-r": 0.20, "asym-eye-5-l": 0.15, "asym-cheek-1-l": 0.08,
     "asym-mouth-1-r": 0.20, "asym-nose-1-l": 0.15, "asym-jaw-1-r": 0.15,
 }
 
@@ -240,8 +241,6 @@ PRESETS["maya_pro"].update({
     "sclera_shade": 0.30,
     "makeup": {
         "concealer": {"strength": 0.22},
-        "contour": {"color": (0.84, 0.78, 0.76), "strength": 0.55},
-        "highlight": {"strength": 0.30},
         "blush": {"color": (1.0, 0.82, 0.80), "strength": 0.40},
         "eyeshadow": {"color": (0.74, 0.66, 0.66), "strength": 0.45},
         "eyeliner": {"color": (0.05, 0.035, 0.035), "strength": 0.90},
