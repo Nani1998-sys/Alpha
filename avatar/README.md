@@ -6,7 +6,7 @@ with Blender 4.5 + MPFB, so the character can be rebuilt and changed from code.
 
 | File | What it is |
 |---|---|
-| `out/maya_pro.glb` | **The character to use.** 6.1 MB, 38,146 triangles, 52-joint Mixamo skeleton, 8 s `idle` clip, 52 ARKit blendshapes |
+| `out/maya_pro.glb` | **The character to use.** 5.5 MB, 38,146 triangles, 52-joint Mixamo skeleton, 8 s `idle` clip, 52 ARKit blendshapes |
 | `out/maya.glb` | Earlier head-and-shoulders version (no skeleton), kept for comparison |
 | `web/avatar-runtime.js` | `AvatarStage`: loads the .glb and keeps it alive (see below) |
 | `web/polly-lipsync.js` | Polly viseme speech marks → ARKit mouth shapes, with co-articulation |
@@ -112,8 +112,13 @@ Everything about the look lives in the `PRESETS` entry:
 - **Colour:** `*_grade` (texture colour grading) and `lips`
 - **Pose:** `rest_pose` (arms down, stance)
 - **Motion:** `idle` (clip length)
-- **Shading detail:** `skin_normal` (pore detail) and `morph_normals` (lip and lid shading
-  while talking, stored sparse on the body only)
+- **Skin finish:** `skin_retouch` (edge-preserving smoothing: pores and blotches go, lids,
+  nostrils and lip edges stay sharp), `skin_normal` (fine pore relief), `skin_roughness`
+  (glossier lips via a roughness map)
+- **Make-up:** `makeup` (concealer, blush, eyeshadow, eyeliner, each with colour and strength,
+  placed from 3D landmarks on the face) and `lips`
+- **Shading detail:** `morph_normals` (lip and lid shading while talking, stored sparse on the
+  body only)
 
 Add new characters as new entries; `maya` is left as it was.
 
@@ -121,17 +126,20 @@ Add new characters as new entries; `maya` is left as it was.
 
 | Part | Asset | Pack |
 |---|---|---|
-| Skin | `cutoff3d_indian_female_skin`, graded warmer and less red, with a derived pore normal map | skins01 |
+| Skin | `callharvey3d_midtoned_female` (the cleanest face texture in the packs), warm brown grade, retouched, light make-up | skins01 |
 | Hair | `culturalibre_hair_01`, lifted from black to very dark brown, body-weighted | hair01 |
 | Eyes | `high-poly` with `brown` material; the see-through cornea shell is removed | system |
-| Brows, lashes | `eyebrow012`, `eyelashes01` | system |
+| Brows, lashes | `eyebrow001` (soft natural arch), `eyelashes02` (fuller) | system |
 | Teeth, tongue | `teeth_base`, `tongue01` | system |
 | Clothing | `female_elegantsuit01` recoloured to a plain navy blouse + charcoal skirt; `shoes04` as black ankle boots | system |
 | Skeleton | MPFB `mixamo` rig (works with Mixamo animations) | MPFB |
 | Face units | 52 ARKit targets | faceunits01 |
 
-The face uses the same `targets` as `maya` except: `mouth-angles-up` 0.28 (0.55 parted the
-lips), `cheek-volume` 0, and `head-fat-decr` 0.12.
+The face is `FACE_REFINED` in the script: an oval head with a softly tapered jaw and chin, high
+cheekbones, larger almond eyes with lifted outer corners, a slim straight nose with a refined
+tip, full lips with a defined cupid's bow, and a longer neck. The body macros make her late
+20s and slim (`age` 0.50, `weight` 0.42, `muscle` 0.34, `proportions` 0.78). It is a generic
+face, not the likeness of any real person.
 
 ### Known limits
 

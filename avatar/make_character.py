@@ -128,13 +128,42 @@ PRESETS = {
 #                  the body underneath, so long hair stays on the shoulders)      [add_assets]
 #   skin_normal    strength of a micro-normal map derived from the skin texture      [fix_materials]
 #   morph_normals  export shape-key normals (better lip and lid shading, more bytes) [export_glb]
+FACE_REFINED = {
+    # head and jaw: oval, slimmer, narrower jaw with a soft point at the chin
+    "head-oval": 0.50, "head-invertedtriangular": 0.20, "head-fat-decr": 0.30, "head-scale-horiz-decr": 0.08,
+    "chin-width-decr": 0.50, "chin-bones-decr": 0.45, "chin-triangle": 0.30,
+    "chin-prominent-incr": 0.10, "chin-height-decr": 0.10, "chin-jaw-drop-decr": 0.10,
+    # cheeks: high cheekbones, a little less fullness below them
+    "lr-cheek-bones-incr": 0.35, "lr-cheek-trans-up": 0.15, "lr-cheek-inner-decr": 0.15,
+    "lr-cheek-volume-decr": 0.15,
+    # eyes: larger, almond, outer corners lifted, no bags
+    "lr-eye-scale-incr": 0.18, "lr-eye-corner2-up": 0.18, "lr-eye-height2-incr": 0.08,
+    "lr-eye-bag-decr": 0.50,
+    # brows: soft lifted arch
+    "eyebrows-trans-up": 0.08, "eyebrows-angle-up": 0.35,
+    # nose: slim, straight, small refined tip
+    "nose-scale-horiz-decr": 0.30, "nose-point-width-decr": 0.35, "nose-flaring-decr": 0.30,
+    "nose-nostrils-width-decr": 0.25, "nose-width1-decr": 0.20, "nose-width2-decr": 0.20,
+    "nose-width3-decr": 0.20, "nose-point-up": 0.15, "nose-hump-decr": 0.30,
+    "nose-volume-decr": 0.20, "nose-scale-vert-decr": 0.10,
+    # mouth: full lips, defined cupid's bow, corners resting slightly up
+    "mouth-upperlip-volume-incr": 0.35, "mouth-lowerlip-volume-incr": 0.32,
+    "mouth-cupidsbow-incr": 0.35, "mouth-scale-horiz-decr": 0.05, "mouth-angles-up": 0.22,
+    # forehead, neck, ears
+    "forehead-scale-vert-decr": 0.30, "neck-scale-horiz-decr": 0.25, "neck-scale-vert-incr": 0.10,
+    "lr-ear-scale-decr": 0.20,
+}
+
 PRESETS["maya_pro"] = dict(PRESETS["maya"])
 PRESETS["maya_pro"].update({
-    # Same face, with the mouth corners eased (0.55 parts the lips enough to show teeth) and
-    # slightly slimmer cheeks.
-    "targets": dict(PRESETS["maya"]["targets"], **{
-        "mouth-angles-up": 0.28, "lr-cheek-volume-incr": 0.0, "head-fat-decr": 0.12,
+    # Late 20s, slim, refined: soft V-shaped jaw, high cheekbones, slim straight nose,
+    # larger almond eyes with lifted outer corners, full lips with a defined cupid's bow,
+    # long neck. A generic face, no likeness of a real person.
+    "macro": dict(PRESETS["maya"]["macro"], **{
+        "age": 0.50, "muscle": 0.34, "weight": 0.42, "proportions": 0.78, "firmness": 0.62,
+        "race": {"asian": 0.25, "caucasian": 0.55, "african": 0.20},
     }),
+    "targets": FACE_REFINED,
     "hair": "culturalibre_hair_01/culturalibre_hair_01.mhclo",                       # hair01
     # the pack's hair is jet black: lift it to a very dark warm brown
     "hair_grade": {"gain": (1.0, 0.86, 0.76), "saturation": 0.7, "gamma": 0.72},
@@ -154,9 +183,23 @@ PRESETS["maya_pro"].update({
          "grade": {"saturation": 0.3, "gain": (0.75, 0.75, 0.78), "gamma": 1.0},
          "surface": {"roughness": 0.42, "specular": 0.5, "double_sided": True}},
     ],
-    "skin_normal": 0.22,
-    "skin_grade": {"gain": (0.87, 0.865, 0.875), "saturation": 0.80, "gamma": 1.12},
-    "lips": {"color": (0.96, 0.74, 0.74), "strength": 0.30},
+    # Smoother, even-toned skin (callharvey3d's face texture is the cleanest in the packs),
+    # graded from mid-tone to warm brown, then retouched and lightly made up.
+    "skin": "callharvey3d_midtoned_female/callharvey3d_midtoned_female.mhmat",       # skins01
+    "skin_grade": {"gain": (1.04, 1.02, 1.00), "saturation": 0.92, "gamma": 0.98},
+    "skin_retouch": {"smooth": 0.5, "detail_clip": 0.03, "even_tone": 0.4, "tone_clip": 0.04},
+    "skin_normal": 0.12,
+    "skin_roughness": {"base": 0.52, "lips": 0.30},
+    "makeup": {
+        "concealer": {"strength": 0.35},
+        "blush": {"color": (1.0, 0.80, 0.78), "strength": 0.55},
+        "eyeshadow": {"color": (0.80, 0.74, 0.74), "strength": 0.38},
+        "eyeliner": {"color": (0.06, 0.04, 0.04), "strength": 0.75},
+    },
+    "lips": {"color": (0.92, 0.62, 0.62), "strength": 0.65},
+    "eyebrows": "eyebrow001/eyebrow001.mhclo",                                       # system
+    "brow_grade": {"gain": (0.36, 0.29, 0.25), "saturation": 0.6, "gamma": 1.0},
+    "eyelashes": "eyelashes02/eyelashes02.mhclo",                                    # system
     "eye_grade": {"gain": (0.84, 0.76, 0.68), "saturation": 0.72, "gamma": 1.12},
     "morph_normals": True,
 })
@@ -792,11 +835,191 @@ def _box_blur(mask, radius):
 
 
 def capture_uv_masks(basemesh, preset, size):
-    """Lip mask for the make-up pass. Must run while the MPFB vertex groups still exist."""
+    """UV masks for the make-up pass. Must run while the MPFB vertex groups and helpers exist."""
     masks = {}
     if preset.get("lips"):
         masks["lips"] = _uv_group_mask(basemesh, "lips", size, size, feather=max(1, size // 512))
+    if preset.get("makeup"):
+        masks.update(_makeup_masks(basemesh, size))
     return masks
+
+
+def _vertex_coords(obj):
+    co = np.empty(len(obj.data.vertices) * 3, dtype=np.float64)
+    obj.data.vertices.foreach_get("co", co)
+    return co.reshape(-1, 3)
+
+
+def _group_members(obj, name):
+    members = np.zeros(len(obj.data.vertices), dtype=bool)
+    if name not in obj.vertex_groups:
+        return members
+    index = obj.vertex_groups[name].index
+    for vert in obj.data.vertices:
+        for g in vert.groups:
+            if g.group == index and g.weight > 0.5:
+                members[vert.index] = True
+                break
+    return members
+
+
+def _smoothstep(edge0, edge1, x):
+    t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _makeup_masks(basemesh, size):
+    """Soft per-vertex weights for blush, eyeshadow, eyeliner and concealer, rasterised to UV.
+
+    Placed from landmarks on the MakeHuman base mesh: the eyeball helpers (eye centre and
+    radius), the open rim of the eye sockets (the lash line), and the lips group.
+    Blender axes: X = character's left, -Y = forward, Z = up.
+    """
+    co = _vertex_coords(basemesh)
+    body = _group_members(basemesh, "body")
+    eyes = []
+    for helper in ("helper-l-eye", "helper-r-eye"):
+        pts = co[_group_members(basemesh, helper)]
+        centre = pts.mean(axis=0)
+        eyes.append((centre, float(np.linalg.norm(pts - centre, axis=1).mean())))
+    mouth = co[_group_members(basemesh, "lips")].mean(axis=0)
+    ipd = float(np.linalg.norm(eyes[0][0] - eyes[1][0]))
+    mid_x = (eyes[0][0][0] + eyes[1][0][0]) / 2.0
+
+    # Open boundary of the body surface around each eye = the lid rim / lash line.
+    edge_faces = {}
+    for poly in basemesh.data.polygons:
+        if not all(body[v] for v in poly.vertices):
+            continue
+        for key in poly.edge_keys:
+            edge_faces[key] = edge_faces.get(key, 0) + 1
+    rim = np.array(sorted({v for key, n in edge_faces.items() if n == 1 for v in key}), dtype=np.int64)
+
+    weights = {name: np.zeros(len(co)) for name in ("blush", "eyeshadow", "eyeliner", "concealer")}
+    for centre, radius in eyes:
+        d = np.linalg.norm(co - centre, axis=1)
+        near = body & (d < radius * 3.2) & (co[:, 1] < centre[1] + radius * 0.6)
+        above = _smoothstep(centre[2] - radius * 0.25, centre[2] + radius * 0.15, co[:, 2])
+        below = _smoothstep(centre[2] + radius * 0.1, centre[2] - radius * 0.5, co[:, 2])
+        outward = np.sign(centre[0] - mid_x)
+        side = _smoothstep(-radius * 0.6, radius * 0.9, (co[:, 0] - centre[0]) * outward)    # stronger at the outer corner
+
+        lid_rim = rim[(np.linalg.norm(co[rim] - centre, axis=1) < radius * 2.2)]
+        if len(lid_rim):
+            rim_dist = np.full(len(co), 1e9)
+            for v in lid_rim:
+                rim_dist = np.minimum(rim_dist, np.linalg.norm(co - co[v], axis=1))
+            liner = np.exp(-(rim_dist / (radius * 0.16)) ** 2) * above * (0.55 + 0.45 * side)
+            weights["eyeliner"] = np.maximum(weights["eyeliner"], np.where(near, liner, 0.0))
+        shadow = (1.0 - _smoothstep(radius * 1.15, radius * 2.0, d)) * above * (0.6 + 0.4 * side)
+        weights["eyeshadow"] = np.maximum(weights["eyeshadow"], np.where(near, shadow, 0.0))
+        conceal = (1.0 - _smoothstep(radius * 1.2, radius * 2.7, d)) * below
+        weights["concealer"] = np.maximum(weights["concealer"], np.where(near, conceal, 0.0))
+
+        # Blush on the apple of the cheek: below and slightly outside the eye, on the surface.
+        target = centre + np.array([outward * ipd * 0.16, 0.0, -(centre[2] - mouth[2]) * 0.55])
+        lane = body & (np.abs(co[:, 0] - target[0]) < ipd * 0.12) & (np.abs(co[:, 2] - target[2]) < ipd * 0.12)
+        if lane.any():
+            surface = co[np.where(lane)[0][np.argmin(co[lane, 1])]]
+            blush = np.exp(-np.sum((co - surface) ** 2, axis=1) / (2.0 * (ipd * 0.26) ** 2))
+            blush *= co[:, 1] < surface[1] + ipd * 0.5
+            weights["blush"] = np.maximum(weights["blush"], np.where(body, blush, 0.0))
+
+    feather = max(1, size // 1024)
+    return {"makeup_" + name: _uv_vertex_mask(basemesh, w, size, size, body, feather) for name, w in weights.items()}
+
+
+def _uv_vertex_mask(obj, weights, width, height, allowed, feather=1):
+    """Rasterise per-vertex weights into UV space with barycentric interpolation."""
+    mask = np.zeros((height, width), dtype=np.float32)
+    uvs = obj.data.uv_layers.active.data
+    for poly in obj.data.polygons:
+        verts = list(poly.vertices)
+        if not all(allowed[v] for v in verts):
+            continue
+        w = weights[verts]
+        if w.max() < 1e-3:
+            continue
+        pts = np.array([(uvs[l].uv[0] * width, uvs[l].uv[1] * height) for l in poly.loop_indices])
+        for a in range(1, len(pts) - 1):
+            tri, tw = pts[[0, a, a + 1]], w[[0, a, a + 1]]
+            x0, y0 = np.floor(tri.min(axis=0)).astype(int)
+            x1, y1 = np.ceil(tri.max(axis=0)).astype(int)
+            x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1, width - 1), min(y1, height - 1)
+            if x1 < x0 or y1 < y0:
+                continue
+            xs, ys = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+            (ax, ay), (bx, by), (cx, cy) = tri
+            den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+            if abs(den) < 1e-9:
+                continue
+            w0 = ((by - cy) * (xs - cx) + (cx - bx) * (ys - cy)) / den
+            w1 = ((cy - ay) * (xs - cx) + (ax - cx) * (ys - cy)) / den
+            w2 = 1.0 - w0 - w1
+            inside = (w0 >= -0.01) & (w1 >= -0.01) & (w2 >= -0.01)
+            value = (w0 * tw[0] + w1 * tw[1] + w2 * tw[2]).astype(np.float32)
+            region = mask[y0:y1 + 1, x0:x1 + 1]
+            region[inside] = np.maximum(region[inside], value[inside])
+    if feather > 0:
+        mask = _box_blur(mask, feather)
+    return np.clip(mask, 0.0, 1.0)
+
+
+def _retouch_skin(pixels, spec):
+    """Edge-preserving skin smoothing (a cheap frequency-separation retouch).
+
+    Fine detail (pores, speckle) and mid-size blotches are reduced, but only where the
+    difference is small: strong features such as lids, nostrils, lip edges and brows exceed
+    the clip and keep their contrast.
+    """
+    size = pixels.shape[0]
+    rgb = pixels[..., :3]
+
+    def blur(img, radius):
+        return np.stack([_box_blur(_box_blur(img[..., c], radius), radius) for c in range(3)], axis=-1)
+
+    fine = blur(rgb, max(1, size // 512))
+    detail = rgb - fine
+    limit = float(spec.get("detail_clip", 0.035))
+    rgb = rgb - np.clip(detail, -limit, limit) * float(spec.get("smooth", 0.7))
+    broad = blur(rgb, max(2, size // 40))
+    middle = blur(rgb, max(1, size // 160)) - broad
+    limit = float(spec.get("tone_clip", 0.04))
+    rgb = rgb - np.clip(middle, -limit, limit) * float(spec.get("even_tone", 0.5))
+    pixels[..., :3] = np.clip(rgb, 0.0, 1.0)
+    return pixels
+
+
+def _apply_makeup(pixels, masks, makeup):
+    """Blush, eyeshadow, concealer (tints) and eyeliner (paint) from the UV masks."""
+    def mask(name):
+        m = masks.get("makeup_" + name)
+        if m is None:
+            return None
+        if m.shape != pixels.shape[:2]:
+            ys = (np.arange(pixels.shape[0]) * m.shape[0] / pixels.shape[0]).astype(int)
+            xs = (np.arange(pixels.shape[1]) * m.shape[1] / pixels.shape[1]).astype(int)
+            m = m[ys][:, xs]
+        return m[..., None]
+
+    rgb = pixels[..., :3]
+    for name in ("concealer", "blush", "eyeshadow"):
+        spec, m = makeup.get(name), mask(name)
+        if not spec or m is None:
+            continue
+        amount = m * float(spec.get("strength", 0.3))
+        if name == "concealer":
+            luma = (rgb * np.array([0.299, 0.587, 0.114], dtype=np.float32)).sum(axis=-1, keepdims=True)
+            lifted = luma + (rgb - luma) * 0.85
+            rgb = rgb * (1.0 - amount) + np.clip(lifted * 1.18, 0, 1) * amount
+        else:
+            rgb = rgb * (1.0 - amount) + rgb * np.array(spec["color"], dtype=np.float32) * amount
+    spec, m = makeup.get("eyeliner"), mask("eyeliner")
+    if spec and m is not None:
+        amount = m * float(spec.get("strength", 0.6))
+        rgb = rgb * (1.0 - amount) + np.array(spec["color"], dtype=np.float32) * amount
+    pixels[..., :3] = np.clip(rgb, 0.0, 1.0)
+    return pixels
 
 
 def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
@@ -847,6 +1070,12 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
                 for patch in overrides.get("paint", []):
                     _paint_uv_box(pixels, patch["uv_box"], patch["color"])
                 pixels = _grade(pixels, grade)
+                if role == "skin" and preset.get("skin_retouch"):
+                    pixels = _retouch_skin(pixels, preset["skin_retouch"])
+                if role == "skin":
+                    detail_source = pixels.copy()        # pore normals come from skin, not make-up
+                if role == "skin" and preset.get("makeup"):
+                    pixels = _apply_makeup(pixels, uv_masks, preset["makeup"])
                 if role == "skin" and preset.get("lips") and "lips" in uv_masks:
                     pixels = _apply_lips(pixels, uv_masks["lips"], preset["lips"])
                 if mode == "OPAQUE":
@@ -876,7 +1105,7 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
             if normal and os.path.exists(normal) and role in ("clothes", "hair"):
                 normal_pixels = _read_pixels(normal, texture_size)
             elif role == "skin" and preset.get("skin_normal") and diffuse and os.path.exists(diffuse):
-                normal_pixels = _micro_normal(_read_pixels(diffuse, size), float(preset["skin_normal"]))
+                normal_pixels = _micro_normal(detail_source, float(preset["skin_normal"]))
             if normal_pixels is not None:
                 pixels = normal_pixels
                 pixels[..., 3] = 1.0
@@ -888,6 +1117,27 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
                 node.inputs["Strength"].default_value = 1.0
                 tree.links.new(tex.outputs["Color"], node.inputs["Color"])
                 tree.links.new(node.outputs["Normal"], bsdf.inputs["Normal"])
+
+            rough = preset.get("skin_roughness") if role == "skin" else None
+            if rough and "lips" in uv_masks:
+                # glTF metallicRoughness texture: G = roughness. Lips a little glossier than skin.
+                lips = uv_masks["lips"]
+                lips = np.clip(_box_blur(lips, max(1, lips.shape[0] // 512)) * 1.3, 0.0, 1.0)
+                if lips.shape[0] != texture_size:
+                    step = lips.shape[0] / float(texture_size)
+                    idx = (np.arange(texture_size) * step).astype(int)
+                    lips = lips[idx][:, idx]
+                value = float(rough["base"]) * (1.0 - lips) + float(rough["lips"]) * lips
+                mr = np.zeros((texture_size, texture_size, 4), dtype=np.float32)
+                mr[..., 1], mr[..., 3] = value, 1.0
+                image = _write_pixels(mr, os.path.join(work_dir, name + "_roughness.jpg"), name + "_roughness",
+                                      non_color=True, quality=90)
+                tex = tree.nodes.new("ShaderNodeTexImage")
+                tex.image = image
+                split = tree.nodes.new("ShaderNodeSeparateColor")
+                tree.links.new(tex.outputs["Color"], split.inputs["Color"])
+                tree.links.new(split.outputs["Green"], bsdf.inputs["Roughness"])
+                tree.links.new(split.outputs["Blue"], bsdf.inputs["Metallic"])
 
             material.use_backface_culling = not surface["double_sided"]
             if mode == "MASK":

@@ -27,7 +27,7 @@ const drift = (t, seed) =>
 
 // Resting face per mood, as ARKit weights. Left/right pairs are written once.
 const MOODS = {
-  neutral: { mouthSmile: 0.12, cheekSquint: 0.05 },
+  neutral: { mouthSmile: 0.14, cheekSquint: 0.06, browInnerUp: 0.06 },
   happy: { mouthSmile: 0.42, cheekSquint: 0.28, eyeSquint: 0.12, browInnerUp: 0.05 },
   concerned: { browInnerUp: 0.45, mouthFrown: 0.10, eyeSquint: 0.06 },
   surprised: { browInnerUp: 0.45, browOuterUp: 0.45, eyeWide: 0.30, jawOpen: 0.06 },
@@ -358,7 +358,8 @@ export class AvatarStage {
 
     if (kind === 'skin') {
       material = new THREE.MeshPhysicalMaterial({
-        map: old.map, normalMap: old.normalMap, roughness: 0.5, metalness: 0,
+        map: old.map, normalMap: old.normalMap, metalness: 0,
+        roughnessMap: old.roughnessMap, roughness: old.roughnessMap ? 1.0 : 0.52,   // the map makes the lips glossier
         specularIntensity: 0.45,
         sheen: 0.18, sheenColor: new THREE.Color(1.0, 0.72, 0.62), sheenRoughness: 0.5,     // soft light at grazing angles
         emissive: new THREE.Color(0.5, 0.2, 0.14), emissiveMap: old.map, emissiveIntensity: 0.035, // warm, never-black shadows (cheap stand-in for subsurface light)
@@ -378,7 +379,7 @@ export class AvatarStage {
     } else if (kind === 'hair') {
       old.roughness = 0.62;
       old.envMapIntensity = 0.55;
-      old.alphaToCoverage = true;                       // soft strand edges with MSAA instead of hard cut-outs
+      old.alphaToCoverage = false;                      // alpha-to-coverage drew dark contour lines in the strands
       old.side = THREE.DoubleSide;
       old.shadowSide = THREE.DoubleSide;
     } else if (kind === 'eyebrows' || kind === 'eyelashes') {
