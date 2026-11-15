@@ -27,7 +27,8 @@ const drift = (t, seed) =>
 
 // Resting face per mood, as ARKit weights. Left/right pairs are written once.
 const MOODS = {
-  neutral: { mouthSmile: 0.14, cheekSquint: 0.06, browInnerUp: 0.06 },
+  // explicit Left/Right values: a resting face is never perfectly even
+  neutral: { mouthSmileLeft: 0.10, mouthSmileRight: 0.16, cheekSquintLeft: 0.04, cheekSquintRight: 0.07, browInnerUp: 0.06, browOuterUpLeft: 0.03 },
   happy: { mouthSmile: 0.42, cheekSquint: 0.28, eyeSquint: 0.12, browInnerUp: 0.05 },
   concerned: { browInnerUp: 0.45, mouthFrown: 0.10, eyeSquint: 0.06 },
   surprised: { browInnerUp: 0.45, browOuterUp: 0.45, eyeWide: 0.30, jawOpen: 0.06 },
@@ -73,12 +74,13 @@ export class AvatarStage {
    * @param {'full'|'medium'|'closeup'|'face'} [options.framing='medium']
    * @param {boolean} [options.followPointer=true]  small camera parallax and gaze response to the pointer
    * @param {boolean} [options.shadows=true]
+   * @param {number} [options.restingLipSeal=0.12]  mouthClose added at rest so the lips meet
    * @param {number} [options.maxPixelRatio=2]
    * @param {(state: string) => void} [options.onState]
    */
   constructor(container, options = {}) {
     this.container = container;
-    this.options = { background: 'studio', framing: 'medium', followPointer: true, shadows: true, maxPixelRatio: 2, ...options };
+    this.options = { background: 'studio', framing: 'medium', followPointer: true, shadows: true, maxPixelRatio: 2, restingLipSeal: 0.12, ...options };
     this.state = 'idle';
     this.mood = 'neutral';
     this.orbit = this.options.orbit || 0;
@@ -368,7 +370,8 @@ export class AvatarStage {
       if (old.normalMap) material.normalScale.set(0.6, 0.6);
     } else if (kind === 'eyes') {
       material = new THREE.MeshPhysicalMaterial({
-        map: old.map, roughness: 0.35, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 0.9,
+        // a wet clear-coat, but not a mirror: big sharp reflections make eyes look glassy
+        map: old.map, roughness: 0.4, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 0.45,
       });
     } else if (kind === 'teeth') {
       old.roughness = 0.28;
@@ -568,8 +571,10 @@ export class AvatarStage {
     } else {
       blink.value = 0;
     }
+    // The second eye trails by a few milliseconds, like a real blink.
+    blink.trail = damp(blink.trail || 0, blink.value, 70, dt);
     weights.eyeBlinkLeft = (weights.eyeBlinkLeft || 0) + blink.value;
-    weights.eyeBlinkRight = (weights.eyeBlinkRight || 0) + blink.value;
+    weights.eyeBlinkRight = (weights.eyeBlinkRight || 0) + Math.max(blink.trail, blink.value * 0.85);
 
     // eyes: whatever the head has not turned yet, the eyes cover
     const gaze = this._gaze;
@@ -584,6 +589,8 @@ export class AvatarStage {
     const talking = Math.min(1, (this._viseme.jawOpen || 0) * 3 + (this._viseme.mouthPucker || 0) * 2);
     weights.mouthSmileLeft *= 1 - 0.5 * talking;
     weights.mouthSmileRight *= 1 - 0.5 * talking;
+    // At rest the lips sit very slightly apart in the mesh; a touch of mouthClose seals them.
+    weights.mouthClose = (weights.mouthClose || 0) + this.options.restingLipSeal * (1 - talking);
     for (const key in this._viseme) weights[key] = (weights[key] || 0) + this._viseme[key];
 
     if (this._manual) {

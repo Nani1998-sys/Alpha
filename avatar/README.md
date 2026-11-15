@@ -6,7 +6,7 @@ with Blender 4.5 + MPFB, so the character can be rebuilt and changed from code.
 
 | File | What it is |
 |---|---|
-| `out/maya_pro.glb` | **The character to use.** 5.5 MB, 38,146 triangles, 52-joint Mixamo skeleton, 8 s `idle` clip, 52 ARKit blendshapes |
+| `out/maya_pro.glb` | **The character to use.** 5.8 MB, 38,146 triangles, 52-joint Mixamo skeleton, 8 s `idle` clip, 52 ARKit blendshapes |
 | `out/maya.glb` | Earlier head-and-shoulders version (no skeleton), kept for comparison |
 | `web/avatar-runtime.js` | `AvatarStage`: loads the .glb and keeps it alive (see below) |
 | `web/polly-lipsync.js` | Polly viseme speech marks → ARKit mouth shapes, with co-articulation |
@@ -115,8 +115,12 @@ Everything about the look lives in the `PRESETS` entry:
 - **Skin finish:** `skin_retouch` (edge-preserving smoothing: pores and blotches go, lids,
   nostrils and lip edges stay sharp), `skin_normal` (fine pore relief), `skin_roughness`
   (glossier lips via a roughness map)
-- **Make-up:** `makeup` (concealer, blush, eyeshadow, eyeliner, each with colour and strength,
-  placed from 3D landmarks on the face) and `lips`
+- **Make-up:** `makeup` (concealer, contour, highlight, blush, eyeshadow, eyeliner and a lid
+  contact shadow, each with colour and strength, placed from 3D landmarks on the face) and `lips`
+- **Realism:** `FACE_ASYMMETRY` (MPFB's left/right asymmetry targets, kept small),
+  `skin_variation` (low-frequency tone variation), `skin_marks` (tiny moles placed relative to
+  the eyes or mouth, sized in millimetres), `sclera_shade` (the whites of the eyes darken and
+  warm towards the corners)
 - **Shading detail:** `morph_normals` (lip and lid shading while talking, stored sparse on the
   body only)
 
@@ -141,7 +145,15 @@ The face is `FACE_STRIKING` in the script, built on `FACE_REFINED`: a slim oval 
 defined, tapered jaw and chin, strong cheekbones with a slight hollow below them, lifted almond
 eyes, level brows set a little lower, a straight nose with a refined tip, full lips with a
 sharp cupid's bow, and a longer neck. Make-up adds light contour under the cheekbones, a
-highlight on top of them, and a stronger lash line. The body macros make her late
+highlight on top of them, and a stronger lash line.
+
+A realism pass sits on top, because perfect faces read as CG:
+- **Asymmetry:** slight left/right differences in the brows, eyes, cheek, mouth, nose and jaw.
+- **Skin:** less airbrushing, with pore relief, gentle tone variation and two tiny moles.
+- **Eyes:** contact shadows round the lids, and sclera shaded towards the corners.
+- **Runtime:** the resting smile is uneven, the second eye trails each blink slightly, a touch
+  of `mouthClose` keeps the lips sealed at rest (`restingLipSeal`), and the eyes are wet but
+  not mirror-like. The body macros make her late
 20s and slim (`age` 0.50, `weight` 0.42, `muscle` 0.34, `proportions` 0.78). It is a generic
 face, not the likeness of any real person.
 

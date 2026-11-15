@@ -215,19 +215,37 @@ PRESETS["maya_pro"].update({
     "brow_grade": {"gain": (0.36, 0.29, 0.25), "saturation": 0.6, "gamma": 1.0},
 })
 
+# Real faces are never mirror-symmetric. MPFB's asymmetry targets, one side each, kept small.
+FACE_ASYMMETRY = {
+    "asym-brown-1-l": 0.25, "asym-eye-2-r": 0.20, "asym-eye-5-l": 0.15, "asym-cheek-1-l": 0.15,
+    "asym-mouth-1-r": 0.20, "asym-nose-1-l": 0.15, "asym-jaw-1-r": 0.15,
+}
+
 # The softer, sweeter face from the previous revision, kept as its own preset.
 PRESETS["maya_pro_soft"] = dict(PRESETS["maya_pro"])
 
 PRESETS["maya_pro"] = dict(PRESETS["maya_pro_soft"])
 PRESETS["maya_pro"].update({
-    "targets": FACE_STRIKING,
+    # Realism pass: slight asymmetry, less airbrushed skin with tone variation and two tiny
+    # moles, contact shadows round the lids, sclera shaded towards the corners.
+    # (the two mouth targets close the slight gap between the lips at rest)
+    "targets": dict(FACE_STRIKING, **FACE_ASYMMETRY, **{"mouth-lowerlip-middle-up": 0.20, "mouth-upperlip-middle-down": 0.10}),
+    "skin_retouch": {"smooth": 0.30, "detail_clip": 0.03, "even_tone": 0.30, "tone_clip": 0.04},
+    "skin_normal": 0.20,
+    "skin_variation": {"amount": 0.03, "redness": 0.025},
+    "skin_marks": [
+        {"anchor": "mouth", "side": "left", "offset": (0.62, 0.10), "radius_mm": 1.1, "strength": 0.55},
+        {"anchor": "eye_r", "offset": (0.30, 0.95), "radius_mm": 0.8, "strength": 0.40},
+    ],
+    "sclera_shade": 0.30,
     "makeup": {
-        "concealer": {"strength": 0.35},
+        "concealer": {"strength": 0.22},
         "contour": {"color": (0.84, 0.78, 0.76), "strength": 0.55},
         "highlight": {"strength": 0.30},
         "blush": {"color": (1.0, 0.82, 0.80), "strength": 0.40},
         "eyeshadow": {"color": (0.74, 0.66, 0.66), "strength": 0.45},
         "eyeliner": {"color": (0.05, 0.035, 0.035), "strength": 0.90},
+        "lid_shadow": {"color": (0.66, 0.52, 0.49), "strength": 0.45},
     },
     "lips": {"color": (0.84, 0.54, 0.56), "strength": 0.70},
     "brow_grade": {"gain": (0.30, 0.24, 0.21), "saturation": 0.6, "gamma": 1.0},
@@ -871,8 +889,10 @@ def capture_uv_masks(basemesh, preset, size):
     masks = {}
     if preset.get("lips"):
         masks["lips"] = _uv_group_mask(basemesh, "lips", size, size, feather=max(1, size // 512))
-    if preset.get("makeup"):
+    if preset.get("makeup") or preset.get("skin_marks"):
         masks.update(_makeup_masks(basemesh, size))
+    if preset.get("skin_marks"):
+        masks["_marks"] = _skin_marks(basemesh, masks["_landmarks"], preset["skin_marks"], size)
     return masks
 
 
@@ -927,7 +947,8 @@ def _makeup_masks(basemesh, size):
             edge_faces[key] = edge_faces.get(key, 0) + 1
     rim = np.array(sorted({v for key, n in edge_faces.items() if n == 1 for v in key}), dtype=np.int64)
 
-    weights = {name: np.zeros(len(co)) for name in ("blush", "eyeshadow", "eyeliner", "concealer", "contour", "highlight")}
+    weights = {name: np.zeros(len(co)) for name in ("blush", "eyeshadow", "eyeliner", "concealer", "contour", "highlight",
+                                                    "lid_shadow")}
     for centre, radius in eyes:
         d = np.linalg.norm(co - centre, axis=1)
         near = body & (d < radius * 3.2) & (co[:, 1] < centre[1] + radius * 0.6)
@@ -943,6 +964,9 @@ def _makeup_masks(basemesh, size):
                 rim_dist = np.minimum(rim_dist, np.linalg.norm(co - co[v], axis=1))
             liner = np.exp(-(rim_dist / (radius * 0.16)) ** 2) * above * (0.55 + 0.45 * side)
             weights["eyeliner"] = np.maximum(weights["eyeliner"], np.where(near, liner, 0.0))
+            # Contact shadow all round the lid rim, where skin meets the eyeball.
+            contact = np.exp(-(rim_dist / (radius * 0.24)) ** 2)
+            weights["lid_shadow"] = np.maximum(weights["lid_shadow"], np.where(near, contact, 0.0))
         shadow = (1.0 - _smoothstep(radius * 1.15, radius * 2.0, d)) * above * (0.6 + 0.4 * side)
         weights["eyeshadow"] = np.maximum(weights["eyeshadow"], np.where(near, shadow, 0.0))
         conceal = (1.0 - _smoothstep(radius * 1.2, radius * 2.7, d)) * below
@@ -978,7 +1002,54 @@ def _makeup_masks(basemesh, size):
             weights[name] = np.maximum(weights[name], np.where(body, value, 0.0))
 
     feather = max(1, size // 1024)
-    return {"makeup_" + name: _uv_vertex_mask(basemesh, w, size, size, body, feather) for name, w in weights.items()}
+    masks = {"makeup_" + name: _uv_vertex_mask(basemesh, w, size, size, body, feather) for name, w in weights.items()}
+    masks["_landmarks"] = {"eyes": [e[0].tolist() for e in eyes], "mouth": mouth.tolist(), "ipd": ipd, "mid_x": mid_x}
+    return masks
+
+
+def _skin_marks(basemesh, landmarks, marks, size):
+    """Tiny moles/freckles as UV-space dots: [(u, v, radius_px, strength), ...].
+
+    Each mark is placed relative to a landmark (left/right eye, mouth) in units of the
+    distance between the eyes, then snapped to the nearest point on the front of the face.
+    """
+    co = _vertex_coords(basemesh)
+    body = _group_members(basemesh, "body")
+    ipd, mid_x = landmarks["ipd"], landmarks["mid_x"]
+    eyes = sorted(landmarks["eyes"], key=lambda c: c[0])          # [right (-X), left (+X)]
+    anchors = {"eye_r": eyes[0], "eye_l": eyes[1], "mouth": landmarks["mouth"]}
+    uv_layer = basemesh.data.uv_layers.active.data
+    loops_of = {}
+    for poly in basemesh.data.polygons:
+        for vert, loop in zip(poly.vertices, poly.loop_indices):
+            loops_of.setdefault(vert, []).append((poly, loop))
+    dots = []
+    for mark in marks:
+        base = np.array(anchors[mark["anchor"]])
+        out_x, down = mark["offset"]
+        if "side" in mark:                                    # character's left = +X
+            side = 1.0 if mark["side"] == "left" else -1.0
+        else:
+            side = 1.0 if base[0] >= mid_x else -1.0
+        target = base + np.array([side * out_x * ipd, 0.0, -down * ipd])
+        lane = body & (np.abs(co[:, 0] - target[0]) < ipd * 0.08) & (np.abs(co[:, 2] - target[2]) < ipd * 0.08)
+        if not lane.any() or not loops_of:
+            continue
+        vert = int(np.where(lane)[0][np.argmin(co[lane, 1])])
+        poly, loop = loops_of[vert][0]
+        uv = np.array(uv_layer[loop].uv)
+        # texels per metre around this vertex, to size the dot in real units
+        ratios = []
+        for other, other_loop in zip(poly.vertices, poly.loop_indices):
+            if other == vert:
+                continue
+            d3 = np.linalg.norm(co[other] - co[vert])
+            duv = np.linalg.norm(np.array(uv_layer[other_loop].uv) - uv) * size
+            if d3 > 1e-6:
+                ratios.append(duv / d3)
+        radius_px = max(1.0, float(mark.get("radius_mm", 1.2)) / 1000.0 * (np.mean(ratios) if ratios else 1000.0))
+        dots.append((float(uv[0]), float(uv[1]), radius_px, float(mark.get("strength", 0.5))))
+    return dots
 
 
 def _uv_vertex_mask(obj, weights, width, height, allowed, feather=1):
@@ -1042,6 +1113,68 @@ def _retouch_skin(pixels, spec):
     return pixels
 
 
+def _skin_variation(pixels, spec, seed=7):
+    """Low-frequency tone variation so the skin is not one flat colour (seeded, repeatable)."""
+    size = pixels.shape[0]
+    rng = np.random.default_rng(seed)
+    total = np.zeros(pixels.shape[:2], dtype=np.float32)
+    red = np.zeros(pixels.shape[:2], dtype=np.float32)
+    for cells, weight in ((48, 0.6), (12, 0.4)):
+        cell = max(2, size // cells)
+        for target in (total, red):
+            grid = rng.standard_normal((size // cell + 2, size // cell + 2)).astype(np.float32)
+            field = np.repeat(np.repeat(grid, cell, axis=0), cell, axis=1)[:size, :size]
+            field = _box_blur(_box_blur(field, cell // 2), cell // 2)
+            target += field / max(float(field.std()), 1e-6) * weight
+    amount = float(spec.get("amount", 0.03))
+    rgb = pixels[..., :3] * (1.0 + amount * total[..., None])
+    rgb[..., 0] *= 1.0 + float(spec.get("redness", 0.02)) * red
+    pixels[..., :3] = np.clip(rgb, 0.0, 1.0)
+    return pixels
+
+
+def _paint_marks(pixels, dots, colour=(0.52, 0.38, 0.33)):
+    """Darken soft round dots (u, v, radius_px, strength) into the texture."""
+    height, width = pixels.shape[:2]
+    tint = np.array(colour, dtype=np.float32)
+    for u, v, radius, strength in dots:
+        cx, cy = u * width, v * height
+        r = int(np.ceil(radius * 2.5))
+        x0, x1 = max(0, int(cx) - r), min(width, int(cx) + r + 1)
+        y0, y1 = max(0, int(cy) - r), min(height, int(cy) + r + 1)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        xs, ys = np.meshgrid(np.arange(x0, x1) + 0.5, np.arange(y0, y1) + 0.5)
+        falloff = np.exp(-((xs - cx) ** 2 + (ys - cy) ** 2) / (2.0 * radius ** 2))[..., None] * strength
+        patch = pixels[y0:y1, x0:x1, :3]
+        pixels[y0:y1, x0:x1, :3] = patch * (1.0 - falloff) + patch * tint * falloff
+    return pixels
+
+
+def _shade_sclera(pixels, strength):
+    """Real sclera is not flat white: it darkens and warms towards the corners of the eye.
+
+    The pupils are found as the darkest blobs (one per eyeball in MakeHuman's eye texture);
+    the shading grows with distance from each pupil.
+    """
+    height, width = pixels.shape[:2]
+    luma = (pixels[..., :3] * np.array([0.299, 0.587, 0.114], dtype=np.float32)).sum(axis=-1)
+    ys, xs = np.nonzero(luma < max(0.08, float(np.percentile(luma, 1.0))))
+    if len(xs) < 20:
+        return pixels
+    yy, xx = np.mgrid[0:height, 0:width]
+    dist = np.full((height, width), 1e9, dtype=np.float32)
+    for half in (xs < width / 2, xs >= width / 2):
+        if half.sum() < 10:
+            continue
+        cx, cy = xs[half].mean(), ys[half].mean()
+        dist = np.minimum(dist, np.hypot(xx - cx, yy - cy) / width)
+    shade = _smoothstep(0.10, 0.26, dist)[..., None] * strength
+    warm = np.array([0.98, 0.88, 0.84], dtype=np.float32)
+    pixels[..., :3] = pixels[..., :3] * (1.0 - shade) + pixels[..., :3] * warm * 0.82 * shade
+    return pixels
+
+
 def _apply_makeup(pixels, masks, makeup):
     """Blush, eyeshadow, concealer (tints) and eyeliner (paint) from the UV masks."""
     def mask(name):
@@ -1055,7 +1188,7 @@ def _apply_makeup(pixels, masks, makeup):
         return m[..., None]
 
     rgb = pixels[..., :3]
-    for name in ("concealer", "contour", "highlight", "blush", "eyeshadow"):
+    for name in ("concealer", "contour", "highlight", "blush", "eyeshadow", "lid_shadow"):
         spec, m = makeup.get(name), mask(name)
         if not spec or m is None:
             continue
@@ -1126,6 +1259,12 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
                 pixels = _grade(pixels, grade)
                 if role == "skin" and preset.get("skin_retouch"):
                     pixels = _retouch_skin(pixels, preset["skin_retouch"])
+                if role == "skin" and preset.get("skin_variation"):
+                    pixels = _skin_variation(pixels, preset["skin_variation"])
+                if role == "skin" and uv_masks.get("_marks"):
+                    pixels = _paint_marks(pixels, uv_masks["_marks"])
+                if role == "eyes" and preset.get("sclera_shade"):
+                    pixels = _shade_sclera(pixels, float(preset["sclera_shade"]))
                 if role == "skin":
                     detail_source = pixels.copy()        # pore normals come from skin, not make-up
                 if role == "skin" and preset.get("makeup"):
