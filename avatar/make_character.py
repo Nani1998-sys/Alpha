@@ -11,6 +11,10 @@ Usage:
     blender -b -P make_character.py -- --kind maya --out maya.glb --texture-size 1024
     python  make_character.py --kind maya --out maya.glb --texture-size 1024   (bpy module)
 
+Presets: `maya` is the unrigged head-and-shoulders character. `maya_pro` is the same person
+as a full-length character: Mixamo-named skeleton, arms-down rest pose, shoes, an "idle"
+animation clip, skin micro-normal map and morph normals.
+
 Optional extras (the three flags above are the stable interface):
     --preview-dir DIR   render front / three-quarter / expression-strip PNGs of the exported file
     --list              list the available --kind values and exit
@@ -35,7 +39,7 @@ import tempfile
 
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Quaternion, Vector
 
 # --------------------------------------------------------------------------------------
 # Presets
@@ -113,6 +117,49 @@ PRESETS = {
         "face_texture_size": 2048,
     },
 }
+
+# Full-length version of the same character. Adds (all optional keys, read by the functions
+# named in brackets):
+#   rig            MPFB built-in rig; "mixamo" gives mixamorig:* bone names          [add_rig]
+#   rest_pose      arms lowered from the A-pose and baked in as the bind pose        [apply_rest_pose]
+#   idle           a looping "idle" clip (breathing, weight shift) in the .glb       [build_idle_animation]
+#   clothes        entries may be dicts with their own grade / surface / paint
+#   hair_follows   "head" (default, rigid: right for short hair) or "body" (weights taken from
+#                  the body underneath, so long hair stays on the shoulders)      [add_assets]
+#   skin_normal    strength of a micro-normal map derived from the skin texture      [fix_materials]
+#   morph_normals  export shape-key normals (better lip and lid shading, more bytes) [export_glb]
+PRESETS["maya_pro"] = dict(PRESETS["maya"])
+PRESETS["maya_pro"].update({
+    # Same face, with the mouth corners eased (0.55 parts the lips enough to show teeth) and
+    # slightly slimmer cheeks.
+    "targets": dict(PRESETS["maya"]["targets"], **{
+        "mouth-angles-up": 0.28, "lr-cheek-volume-incr": 0.0, "head-fat-decr": 0.12,
+    }),
+    "hair": "culturalibre_hair_01/culturalibre_hair_01.mhclo",                       # hair01
+    # the pack's hair is jet black: lift it to a very dark warm brown
+    "hair_grade": {"gain": (1.0, 0.86, 0.76), "saturation": 0.7, "gamma": 0.72},
+    "hair_follows": "body",
+    "rig": "mixamo",
+    "rest_pose": {"shoulder_drop": 3.0, "upper_arm": (10.0, 1.0), "forearm": (4.0, 10.0), "hand": (1.0, 14.0),
+                  "finger_curl": 9.0, "leg_in": 2.5},
+    "idle": {"seconds": 8.0, "fps": 30},
+    "clothes": [
+        {"asset": "female_elegantsuit01/female_elegantsuit01.mhclo",                 # system
+         # plain navy blouse, charcoal skirt: the stripes are flattened out
+         "grade": {"solid": {"color": (0.085, 0.115, 0.23), "threshold": 0.20, "shading": 0.55},
+                   "hue_to": 0.615, "saturation": 0.55, "gain": (0.50, 0.52, 0.60), "gamma": 1.0}},
+        {"asset": "shoes04/shoes04.mhclo",                                           # system
+         # the sock part of the texture is painted black: reads as ankle boots
+         "paint": [{"uv_box": (0.80, 0.70, 1.0, 1.0), "color": (0.035, 0.035, 0.04)}],
+         "grade": {"saturation": 0.3, "gain": (0.75, 0.75, 0.78), "gamma": 1.0},
+         "surface": {"roughness": 0.42, "specular": 0.5, "double_sided": True}},
+    ],
+    "skin_normal": 0.22,
+    "skin_grade": {"gain": (0.87, 0.865, 0.875), "saturation": 0.80, "gamma": 1.12},
+    "lips": {"color": (0.96, 0.74, 0.74), "strength": 0.30},
+    "eye_grade": {"gain": (0.84, 0.76, 0.68), "saturation": 0.72, "gamma": 1.12},
+    "morph_normals": True,
+})
 
 # glTF material name, alpha mode and cutoff per role. patch_alpha_modes() enforces this on
 # the written file, because the Blender exporter derives alpha modes from the node graph.
@@ -276,8 +323,8 @@ def check_licenses(mpfb, preset):
     for key in ("skin", "eyes", "eye_material", "eyebrows", "eyelashes", "teeth", "tongue", "hair"):
         if preset.get(key):
             used.append((key, preset[key]))
-    for fragment in preset.get("clothes", []):
-        used.append(("clothes", fragment))
+    for entry in preset.get("clothes", []):
+        used.append(("clothes", _clothes_entry(entry)["asset"]))
     report = []
     for role, fragment in used:
         name = os.path.splitext(os.path.basename(fragment))[0]
@@ -288,6 +335,11 @@ def check_licenses(mpfb, preset):
         if lic != "CC0":
             raise SystemExit("Asset %s (%s) is not marked CC0 in the pack metadata: %r" % (fragment, role, lic))
     return report
+
+
+def _clothes_entry(entry):
+    """Clothes may be listed as a plain asset fragment or as a dict with per-item overrides."""
+    return entry if isinstance(entry, dict) else {"asset": entry}
 
 
 def build_human(mpfb, preset):
@@ -304,6 +356,8 @@ def build_human(mpfb, preset):
         feet_on_ground=True, scale=0.1, macro_detail_dict=macro)
 
     for name, weight in preset.get("targets", {}).items():
+        if not weight:
+            continue
         names = ["l-" + name[3:], "r-" + name[3:]] if name.startswith("lr-") else [name]
         for target in names:
             path = mpfb.TargetService.target_full_path(target)
@@ -329,7 +383,7 @@ def _in_group(obj, vert, group_name):
     return any(g.group == index and g.weight > 0.5 for g in vert.groups)
 
 
-def add_assets(mpfb, basemesh, preset):
+def add_assets(mpfb, basemesh, preset, rig=None):
     """Skin, eyes, brows, lashes, teeth, tongue, hair and clothing through MPFB."""
     objects = {"skin": [basemesh]}
 
@@ -341,15 +395,20 @@ def add_assets(mpfb, basemesh, preset):
         ("eyes", "eyes", "Eyes"), ("eyebrows", "eyebrows", "Eyebrows"), ("eyelashes", "eyelashes", "Eyelashes"),
         ("teeth", "teeth", "Teeth"), ("tongue", "tongue", "Tongue"), ("hair", "hair", "Hair"),
     ]
-    jobs = [(role, subdir, atype, preset[role]) for role, subdir, atype in plan if preset.get(role)]
-    jobs += [("clothes", "clothes", "Clothes", fragment) for fragment in preset.get("clothes", [])]
+    jobs = [(role, subdir, atype, {"asset": preset[role]}) for role, subdir, atype in plan if preset.get(role)]
+    jobs += [("clothes", "clothes", "Clothes", _clothes_entry(entry)) for entry in preset.get("clothes", [])]
 
-    for role, subdir, atype, fragment in jobs:
+    for role, subdir, atype, entry in jobs:
+        fragment = entry["asset"]
         mhclo = mpfb.asset(fragment, subdir)
         obj = mpfb.HumanService.add_mhclo_asset(
             mhclo, basemesh, asset_type=atype, subdiv_levels=0, material_type="GAMEENGINE",
-            set_up_rigging=False, interpolate_weights=False, import_subrig=False, import_weights=False)
+            set_up_rigging=bool(rig), interpolate_weights=bool(rig), import_subrig=False, import_weights=bool(rig))
         obj["mc_role"] = role
+        obj["mc_overrides"] = json.dumps({k: v for k, v in entry.items() if k != "asset"})
+        rigid = role in HEAD_RIGID_ROLES and not (role == "hair" and preset.get("hair_follows") == "body")
+        if rig and rigid:
+            _bind_to_bone(obj, rig, _bone(rig, "Head").name)
         mhmat = mhclo_material(mhclo)
         if role == "eyes" and preset.get("eye_material"):
             mhmat = mpfb.asset(preset["eye_material"], "eyes")
@@ -357,6 +416,168 @@ def add_assets(mpfb, basemesh, preset):
         objects.setdefault(role, []).append(obj)
         log("added", role, fragment, "tris=%d" % triangle_count(obj))
     return objects
+
+
+# --------------------------------------------------------------------------------------
+# Skeleton, rest pose, idle animation
+# --------------------------------------------------------------------------------------
+
+# These follow the head as one rigid piece (no smeared weights on hair tips or eyeballs).
+HEAD_RIGID_ROLES = ("eyes", "eyebrows", "eyelashes", "teeth", "tongue", "hair")
+
+
+def add_rig(mpfb, basemesh, preset):
+    """Add an MPFB built-in rig with weights. Returns the armature, or None if the preset has no rig."""
+    if not preset.get("rig"):
+        return None
+    rig = mpfb.HumanService.add_builtin_rig(basemesh, preset["rig"], import_weights=True)
+    if rig is None:
+        raise SystemExit("MPFB could not create the rig %r" % preset["rig"])
+    rig.name = rig.data.name = "Armature"
+    for bone in rig.pose.bones:
+        bone.rotation_mode = "QUATERNION"
+    log("rig", preset["rig"], "bones=%d" % len(rig.data.bones))
+    return rig
+
+
+def _bone(rig, key):
+    """Pose bone by its short name ("LeftArm"), whatever prefix the rig uses ("mixamorig:")."""
+    for bone in rig.pose.bones:
+        if bone.name.split(":")[-1].lower() == key.lower():
+            return bone
+    raise SystemExit("The rig has no %r bone - presets with a rest pose or idle need a Mixamo-named rig" % key)
+
+
+def _bind_to_bone(obj, rig, bone_name):
+    for group in list(obj.vertex_groups):
+        obj.vertex_groups.remove(group)
+    group = obj.vertex_groups.new(name=bone_name)
+    group.add(list(range(len(obj.data.vertices))), 1.0, "REPLACE")
+    if not any(m.type == "ARMATURE" for m in obj.modifiers):
+        obj.modifiers.new("Armature", "ARMATURE").object = rig
+
+
+def _rotate_pose_bone(pose_bone, axis, degrees):
+    """Rotate a pose bone about an armature-space axis through its head (exact, parent first)."""
+    head = pose_bone.matrix.to_translation()
+    turn = Matrix.Translation(head) @ Matrix.Rotation(math.radians(degrees), 4, axis) @ Matrix.Translation(-head)
+    pose_bone.matrix = turn @ pose_bone.matrix
+    bpy.context.view_layer.update()
+
+
+def _aim_pose_bone(pose_bone, towards, direction):
+    """Swing a pose bone so that the line from its head to `towards` points along `direction`.
+
+    A pure swing (shortest arc): the bone's twist is left alone, which is what keeps the palms
+    facing the thighs when the arms come down from the A-pose.
+    """
+    head = pose_bone.matrix.to_translation()
+    current = (towards.matrix.to_translation() - head).normalized()
+    swing = current.rotation_difference(Vector(direction).normalized()).to_matrix().to_4x4()
+    pose_bone.matrix = Matrix.Translation(head) @ swing @ Matrix.Translation(-head) @ pose_bone.matrix
+    bpy.context.view_layer.update()
+
+
+def apply_rest_pose(rig, objects, preset):
+    """Bring the arms down from MakeHuman's A-pose, narrow the stance, and make that the bind pose.
+
+    Runs before the face units are loaded, so no mesh has shape keys yet and the armature
+    modifier can simply be applied. Armature axes: X = character's left, -Y = forward, Z = up.
+    Angles are degrees away from straight down: `out` to the side, `forward` to the front.
+    """
+    pose = preset.get("rest_pose")
+    if not rig or not pose:
+        return
+
+    def down(sign, angles):
+        return (sign * math.tan(math.radians(angles[0])), -math.tan(math.radians(angles[1])), -1.0)
+
+    for side in ("Left", "Right"):
+        arm, forearm, hand = (_bone(rig, side + part) for part in ("Arm", "ForeArm", "Hand"))
+        sign = 1.0 if (hand.head - arm.head).x > 0 else -1.0
+        _rotate_pose_bone(_bone(rig, side + "Shoulder"), "Y", sign * float(pose.get("shoulder_drop", 0.0)))
+        _aim_pose_bone(arm, forearm, down(sign, pose.get("upper_arm", (10.0, 2.0))))
+        _aim_pose_bone(forearm, hand, down(sign, pose.get("forearm", (5.0, 10.0))))
+        _aim_pose_bone(hand, _bone(rig, side + "HandMiddle1"), down(sign, pose.get("hand", (2.0, 14.0))))
+        curl = float(pose.get("finger_curl", 0.0))
+        if curl:
+            for finger in ("Index", "Middle", "Ring", "Pinky"):
+                for joint, share in ((1, 0.8), (2, 1.2), (3, 0.8)):
+                    _rotate_pose_bone(_bone(rig, "%sHand%s%d" % (side, finger, joint)), "Y", sign * curl * share)
+        # Narrower stance: swing the leg in at the hip and turn the foot back flat.
+        leg_in = float(pose.get("leg_in", 0.0))
+        if leg_in:
+            _rotate_pose_bone(_bone(rig, side + "UpLeg"), "Y", sign * leg_in)
+            _rotate_pose_bone(_bone(rig, side + "Foot"), "Y", -sign * leg_in)
+
+    meshes = [obj for objs in objects.values() for obj in objs]
+    for obj in meshes:
+        activate(obj)
+        for modifier in [m for m in obj.modifiers if m.type == "ARMATURE"]:
+            bpy.ops.object.modifier_move_to_index(modifier=modifier.name, index=0)
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+    activate(rig)
+    bpy.ops.object.mode_set(mode="POSE")
+    bpy.ops.pose.armature_apply(selected=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for obj in meshes:
+        obj.modifiers.new("Armature", "ARMATURE").object = rig
+
+
+def build_idle_animation(rig, preset):
+    """A looping "idle" action: breathing, a slow weight shift, a little arm and head drift.
+
+    Small rotations about armature-space axes (X pitch, Y roll, Z yaw), written as bone-local
+    quaternions. Every channel completes whole cycles, so the clip loops without a seam.
+    Hip motion is cancelled in the thighs so the feet stay planted.
+    """
+    spec = preset.get("idle")
+    if not rig or not spec:
+        return None
+    fps = int(spec.get("fps", 30))
+    frames = int(round(float(spec.get("seconds", 8.0)) * fps))
+    scene = bpy.context.scene
+    scene.render.fps = fps
+    scene.frame_start, scene.frame_end = 1, frames + 1
+
+    # bone, axis, amplitude in degrees, cycles per clip, phase (0..1)
+    channels = [
+        ("Hips", "Y", 0.55, 1, 0.00), ("LeftUpLeg", "Y", -0.55, 1, 0.00), ("RightUpLeg", "Y", -0.55, 1, 0.00),
+        ("Hips", "Z", 0.70, 1, 0.20), ("LeftUpLeg", "Z", -0.70, 1, 0.20), ("RightUpLeg", "Z", -0.70, 1, 0.20),
+        ("Spine", "Y", -0.35, 1, 0.00), ("Spine", "Z", -0.40, 1, 0.20),
+        ("Spine1", "X", 0.45, 2, 0.00), ("Spine2", "X", 0.60, 2, 0.02),          # breathing, 4 s
+        ("LeftShoulder", "Y", -0.70, 2, 0.04), ("RightShoulder", "Y", 0.70, 2, 0.04),
+        ("Neck", "X", -0.55, 2, 0.03), ("Neck", "Y", 0.20, 1, 0.05),
+        ("Head", "X", -0.35, 2, 0.10), ("Head", "Z", 0.60, 1, 0.35), ("Head", "Y", 0.25, 1, 0.60),
+        ("LeftArm", "X", 0.70, 1, 0.15), ("RightArm", "X", 0.70, 1, 0.65),
+        ("LeftArm", "Y", 0.35, 2, 0.05), ("RightArm", "Y", -0.35, 2, 0.05),
+        ("LeftForeArm", "X", 0.90, 2, 0.20), ("RightForeArm", "X", 0.90, 2, 0.70),
+        ("LeftHand", "X", 0.80, 1, 0.40), ("RightHand", "X", 0.80, 1, 0.90),
+    ]
+    axes = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}
+    local = {}
+    for key, axis, _amp, _cycles, _phase in channels:
+        bone = _bone(rig, key)
+        local[(key, axis)] = (bone, bone.bone.matrix_local.to_3x3().inverted() @ axes[axis])
+
+    action = bpy.data.actions.new("idle")
+    rig.animation_data_create()
+    rig.animation_data.action = action
+    animated = {bone for bone, _axis in local.values()}
+    for frame in range(0, frames + 1, 3):
+        phase = frame / frames
+        for bone in animated:
+            bone.rotation_quaternion = Quaternion()
+        for key, axis, amplitude, cycles, offset in channels:
+            bone, local_axis = local[(key, axis)]
+            angle = math.radians(amplitude) * math.sin(2.0 * math.pi * (cycles * phase + offset))
+            bone.rotation_quaternion = bone.rotation_quaternion @ Quaternion(local_axis, angle)
+        for bone in animated:
+            bone.keyframe_insert("rotation_quaternion", frame=frame + 1)
+    for bone in animated:
+        bone.rotation_quaternion = Quaternion()
+    log("idle animation: %d frames at %d fps, %d bones" % (frames, fps, len(animated)))
+    return action
 
 
 def add_face_units(mpfb, basemesh, objects):
@@ -401,22 +622,38 @@ def _order_shape_keys(obj, names):
             index -= 1
 
 
-def stage_for_export(mpfb, basemesh, objects):
+def stage_for_export(mpfb, basemesh, objects, rig=None):
     """Bake delete-group masks, drop helper geometry, give objects clean names."""
     mpfb.ExportService.bake_modifiers_remove_helpers(
         basemesh, bake_masks=True, bake_subdiv=False, remove_helpers=True, also_proxy=False)
 
+    bones = {bone.name for bone in rig.data.bones} if rig else set()
     counters = {}
     for role, objs in objects.items():
         for obj in objs:
             for modifier in list(obj.modifiers):
                 obj.modifiers.remove(modifier)
-            obj.parent = None
+            world = obj.matrix_world.copy()
+            obj.parent = rig
+            obj.matrix_parent_inverse = Matrix.Identity(4)
+            obj.matrix_world = world
             activate(obj)
             bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
             bpy.ops.object.shade_smooth()
             for group in list(obj.vertex_groups):
-                obj.vertex_groups.remove(group)
+                if group.name not in bones:
+                    obj.vertex_groups.remove(group)
+            if rig:
+                # Every vertex needs a bone; strays (if any) follow the hips.
+                if not obj.vertex_groups:
+                    _bind_to_bone(obj, rig, _bone(rig, "Hips").name)
+                else:
+                    loose = [v.index for v in obj.data.vertices if not v.groups]
+                    if loose:
+                        hips = _bone(rig, "Hips").name
+                        group = obj.vertex_groups.get(hips) or obj.vertex_groups.new(name=hips)
+                        group.add(loose, 1.0, "REPLACE")
+                obj.modifiers.new("Armature", "ARMATURE").object = rig
             name = "body" if role == "skin" else role
             counters[name] = counters.get(name, 0) + 1
             if counters[name] > 1:
@@ -470,6 +707,20 @@ def _grade(pixels, grade):
         return pixels
     rgb = pixels[..., :3]
     luma = (rgb * np.array([0.299, 0.587, 0.114], dtype=np.float32)).sum(axis=-1, keepdims=True)
+    solid_mask = None
+    if grade.get("solid"):
+        # Printed (saturated) cloth becomes one flat colour; only its broad shading is kept.
+        # The mask is taken from the blurred saturation, so thin pale stripes are covered too.
+        spec = grade["solid"]
+        maxc, minc = rgb.max(axis=-1), rgb.min(axis=-1)
+        radius = max(2, rgb.shape[0] // 96)
+        saturation = _box_blur(_box_blur(np.where(maxc > 1e-5, (maxc - minc) / np.maximum(maxc, 1e-5), 0.0).astype(np.float32), radius), radius)
+        threshold = float(spec.get("threshold", 0.2))
+        solid_mask = np.clip((saturation - threshold * 0.6) / (threshold * 0.4), 0.0, 1.0)[..., None]
+        broad = _box_blur(_box_blur(luma[..., 0], radius), radius)[..., None]
+        mean = float((broad * solid_mask).sum() / max(float(solid_mask.sum()), 1.0))
+        shade = 1.0 + (broad / max(mean, 1e-4) - 1.0) * float(spec.get("shading", 0.5))
+        solid_rgb = np.array(spec["color"], dtype=np.float32) * np.clip(shade, 0.4, 1.8)
     if grade.get("hue_to") is not None:
         # Replace the hue, keep each pixel's own saturation and brightness (keeps greys grey).
         maxc, minc = rgb.max(axis=-1, keepdims=True), rgb.min(axis=-1, keepdims=True)
@@ -488,6 +739,8 @@ def _grade(pixels, grade):
     rgb = luma + (rgb - luma) * float(grade.get("saturation", 1.0))
     rgb = np.clip(rgb, 0.0, 1.0) ** float(grade.get("gamma", 1.0))
     rgb = rgb * np.array(grade.get("gain", (1.0, 1.0, 1.0)), dtype=np.float32)
+    if solid_mask is not None:
+        rgb = rgb * (1.0 - solid_mask) + solid_rgb * solid_mask
     pixels[..., :3] = np.clip(rgb, 0.0, 1.0)
     return pixels
 
@@ -564,7 +817,9 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
             mhmat_path = obj.get("mc_mhmat") or ""
             mhmat = parse_mhmat(mhmat_path) if mhmat_path and os.path.exists(mhmat_path) else {}
             mode, cutoff = ALPHA_MODES[role]
-            surface = SURFACE[role]
+            overrides = json.loads(obj.get("mc_overrides") or "{}")
+            surface = dict(SURFACE[role], **overrides.get("surface", {}))
+            grade = overrides.get("grade") or preset.get(grades.get(role, ""))
             name = role if number == 0 else "%s%d" % (role, number + 1)
             size = texture_size
             if role == "skin":
@@ -589,7 +844,9 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
             diffuse = mhmat.get("diffuseTexture")
             if diffuse and os.path.exists(diffuse):
                 pixels = _read_pixels(diffuse, size)
-                pixels = _grade(pixels, preset.get(grades.get(role, "")))
+                for patch in overrides.get("paint", []):
+                    _paint_uv_box(pixels, patch["uv_box"], patch["color"])
+                pixels = _grade(pixels, grade)
                 if role == "skin" and preset.get("lips") and "lips" in uv_masks:
                     pixels = _apply_lips(pixels, uv_masks["lips"], preset["lips"])
                 if mode == "OPAQUE":
@@ -600,6 +857,9 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
                     pixels[..., 3] = 1.0
                     path = os.path.join(work_dir, name + "_color.jpg")
                 else:
+                    # Transparent texels keep whatever colour the artist left (often white). Texture
+                    # filtering mixes it into the strand edges, so fill them with nearby colour.
+                    pixels = _bleed_alpha(pixels)
                     path = os.path.join(work_dir, name + "_color.png")
                 image = _write_pixels(pixels, path, name + "_color")
                 tex = tree.nodes.new("ShaderNodeTexImage")
@@ -612,8 +872,13 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
                 bsdf.inputs["Base Color"].default_value = (colour[0], colour[1], colour[2], 1.0)
 
             normal = mhmat.get("normalmapTexture")
+            normal_pixels = None
             if normal and os.path.exists(normal) and role in ("clothes", "hair"):
-                pixels = _read_pixels(normal, texture_size)
+                normal_pixels = _read_pixels(normal, texture_size)
+            elif role == "skin" and preset.get("skin_normal") and diffuse and os.path.exists(diffuse):
+                normal_pixels = _micro_normal(_read_pixels(diffuse, size), float(preset["skin_normal"]))
+            if normal_pixels is not None:
+                pixels = normal_pixels
                 pixels[..., 3] = 1.0
                 image = _write_pixels(pixels, os.path.join(work_dir, name + "_normal.jpg"), name + "_normal",
                                       non_color=True, quality=92)
@@ -635,6 +900,55 @@ def fix_materials(objects, preset, texture_size, work_dir, uv_masks=None):
             obj.data.materials.append(material)
             materials[name] = (mode, cutoff, surface["double_sided"])
     return materials
+
+
+def _bleed_alpha(pixels, cutoff=0.5):
+    """Replace the RGB of transparent texels with the average colour of nearby opaque ones."""
+    alpha = pixels[..., 3]
+    solid = (alpha >= cutoff).astype(np.float32)
+    if solid.all() or not solid.any():
+        return pixels
+    rgb = pixels[..., :3].copy()
+    filled = solid.copy()
+    for radius in (2, 6, 18, 54, max(pixels.shape[:2]) // 4):
+        weight = _box_blur(_box_blur(solid, radius), radius)
+        colour = np.stack([_box_blur(_box_blur(pixels[..., c] * solid, radius), radius) for c in range(3)], axis=-1)
+        take = (filled < 0.5) & (weight > 1e-4)
+        rgb[take] = colour[take] / weight[take][:, None]
+        filled[take] = 1.0
+        if filled.all():
+            break
+    pixels[..., :3] = np.where(solid[..., None] > 0, pixels[..., :3], rgb)
+    return pixels
+
+
+def _paint_uv_box(pixels, uv_box, colour):
+    """Fill a UV rectangle (u0, v0, u1, v1) with a flat colour."""
+    height, width = pixels.shape[:2]
+    u0, v0, u1, v1 = uv_box
+    pixels[int(v0 * height):int(v1 * height), int(u0 * width):int(u1 * width), :3] = np.array(colour, dtype=np.float32)
+
+
+def _micro_normal(pixels, strength):
+    """Tangent-space normal map from the fine detail of a colour texture (pores, creases).
+
+    High-pass the luminance (so shading painted into the texture does not become relief),
+    treat the result as height and take its gradient.
+    """
+    luma = (pixels[..., :3] * np.array([0.299, 0.587, 0.114], dtype=np.float32)).sum(axis=-1)
+    radius = max(2, pixels.shape[0] // 256)
+    detail = luma - _box_blur(_box_blur(luma, radius), radius)
+    detail = _box_blur(detail, 1) if pixels.shape[0] >= 2048 else detail
+    scale = strength * pixels.shape[0] / 64.0
+    dx = (np.roll(detail, -1, axis=1) - np.roll(detail, 1, axis=1)) * scale
+    dy = (np.roll(detail, -1, axis=0) - np.roll(detail, 1, axis=0)) * scale
+    length = np.sqrt(dx * dx + dy * dy + 1.0)
+    out = np.empty(pixels.shape, dtype=np.float32)
+    out[..., 0] = (-dx / length) * 0.5 + 0.5
+    out[..., 1] = (-dy / length) * 0.5 + 0.5
+    out[..., 2] = (1.0 / length) * 0.5 + 0.5
+    out[..., 3] = 1.0
+    return out
 
 
 def _delete_transparent_faces(obj, alpha, threshold=0.5):
@@ -677,13 +991,16 @@ def _apply_lips(pixels, mask, lips):
 # Export and post-processing
 # --------------------------------------------------------------------------------------
 
-def export_glb(objects, out_path):
+def export_glb(objects, out_path, rig=None, preset=None):
+    preset = preset or {}
     bpy.ops.object.select_all(action="DESELECT")
     for objs in objects.values():
         for obj in objs:
             obj.select_set(True)
-    bpy.context.view_layer.objects.active = objects["skin"][0]
-    bpy.ops.export_scene.gltf(
+    if rig:
+        rig.select_set(True)
+    bpy.context.view_layer.objects.active = rig or objects["skin"][0]
+    options = dict(
         filepath=out_path,
         export_format="GLB",
         use_selection=True,
@@ -696,7 +1013,7 @@ def export_glb(objects, out_path):
         export_image_format="AUTO",           # keeps our PNG / JPEG files as they are
         export_draco_mesh_compression_enable=False,
         export_morph=True,
-        export_morph_normal=False,            # halves the morph data; lips shade fine without
+        export_morph_normal=bool(preset.get("morph_normals")),
         export_morph_tangent=False,
         export_try_sparse_sk=True,            # store only the vertices a face unit moves
         export_try_omit_sparse_sk=True,
@@ -706,6 +1023,22 @@ def export_glb(objects, out_path):
         export_lights=False,
         export_extras=False,
     )
+    if rig:
+        options.update(
+            export_skins=True,
+            export_all_influences=False,      # 4 bone influences per vertex
+            export_def_bones=False,
+            export_rest_position_armature=True,
+            export_animations=bool(rig.animation_data and rig.animation_data.action),
+            export_animation_mode="ACTIVE_ACTIONS",
+            export_force_sampling=True,
+            export_frame_step=1,
+            export_optimize_animation_size=True,
+            export_optimize_animation_keep_anim_armature=False,
+            export_morph_animation=False,
+            export_anim_slide_to_zero=True,
+        )
+    bpy.ops.export_scene.gltf(**options)
 
 
 def _read_glb(path):
@@ -758,7 +1091,163 @@ def patch_alpha_modes(glb_path, materials):
     _write_glb(glb_path, doc, rest)
 
 
-def verify_glb(glb_path, expect_all_keys):
+def name_single_animation(glb_path, name):
+    """The exporter names a lone armature action "Animation"; give it the clip name apps look for."""
+    doc, rest = _read_glb(glb_path)
+    animations = doc.get("animations", [])
+    if len(animations) == 1 and animations[0].get("name") != name:
+        animations[0]["name"] = name
+        _write_glb(glb_path, doc, rest)
+
+
+_COMPONENT = {5120: ("b", 1), 5121: ("B", 1), 5122: ("h", 2), 5123: ("H", 2), 5125: ("I", 4), 5126: ("f", 4)}
+_WIDTH = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
+
+
+def slim_morph_normals(glb_path, keep_meshes=("body",), threshold=0.02):
+    """Shrink the shape-key normals the exporter writes, then repack the binary chunk.
+
+    Morph normals fix the shading of lips and lids while they move, but the exporter stores
+    a full normal delta per vertex and key (most of them ~0). Here they are kept only on
+    `keep_meshes`, and only where the normal really changes, as sparse accessors.
+    """
+    doc, rest = _read_glb(glb_path)
+    if not rest:
+        return
+    binary = rest[8:8 + struct.unpack_from("<I", rest, 0)[0]]
+    views, accessors = doc["bufferViews"], doc["accessors"]
+
+    def read_vec3(index):
+        accessor = accessors[index]
+        count = accessor["count"]
+        data = np.zeros((count, 3), dtype=np.float32)
+        if "bufferView" in accessor:
+            view = views[accessor["bufferView"]]
+            start = view.get("byteOffset", 0) + accessor.get("byteOffset", 0)
+            stride = view.get("byteStride", 12)
+            raw = np.frombuffer(binary, dtype=np.uint8, count=(count - 1) * stride + 12, offset=start)
+            data = np.lib.stride_tricks.as_strided(raw, shape=(count, 12), strides=(stride, 1)).copy().view(np.float32).reshape(count, 3)
+        if "sparse" in accessor:
+            sparse = accessor["sparse"]
+            fmt = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}[sparse["indices"]["componentType"]]
+            iview, vview = views[sparse["indices"]["bufferView"]], views[sparse["values"]["bufferView"]]
+            rows = np.frombuffer(binary, dtype=fmt, count=sparse["count"],
+                                 offset=iview.get("byteOffset", 0) + sparse["indices"].get("byteOffset", 0))
+            values = np.frombuffer(binary, dtype=np.float32, count=sparse["count"] * 3,
+                                   offset=vview.get("byteOffset", 0) + sparse["values"].get("byteOffset", 0)).reshape(-1, 3)
+            data = data.copy()
+            data[rows] = values
+        return data
+
+    extra = []          # new bufferView payloads, appended after the existing ones
+
+    def add_view(payload):
+        views.append({"buffer": 0, "byteLength": len(payload), "_payload": payload})
+        return len(views) - 1
+
+    dropped = kept = 0
+    for mesh in doc.get("meshes", []):
+        for prim in mesh["primitives"]:
+            for target in prim.get("targets", []):
+                if "NORMAL" not in target:
+                    continue
+                if mesh.get("name") not in keep_meshes:
+                    del target["NORMAL"]
+                    dropped += 1
+                    continue
+                data = read_vec3(target["NORMAL"])
+                rows = np.nonzero(np.linalg.norm(data, axis=1) > threshold)[0]
+                accessor = {"componentType": 5126, "type": "VEC3", "count": int(data.shape[0])}
+                if len(rows):
+                    wide = data.shape[0] > 65535
+                    accessor["sparse"] = {
+                        "count": int(len(rows)),
+                        "indices": {"bufferView": add_view(rows.astype(np.uint32 if wide else np.uint16).tobytes()),
+                                    "componentType": 5125 if wide else 5123},
+                        "values": {"bufferView": add_view(data[rows].astype(np.float32).tobytes())},
+                    }
+                accessors.append(accessor)
+                target["NORMAL"] = len(accessors) - 1
+                kept += 1
+
+    # Repack: keep only the bufferViews something still points at.
+    used_accessors = set()
+    for mesh in doc.get("meshes", []):
+        for prim in mesh["primitives"]:
+            used_accessors.update(prim["attributes"].values())
+            if "indices" in prim:
+                used_accessors.add(prim["indices"])
+            for target in prim.get("targets", []):
+                used_accessors.update(target.values())
+    for skin in doc.get("skins", []):
+        if "inverseBindMatrices" in skin:
+            used_accessors.add(skin["inverseBindMatrices"])
+    for animation in doc.get("animations", []):
+        for sampler in animation["samplers"]:
+            used_accessors.update((sampler["input"], sampler["output"]))
+    accessor_map = {old: new for new, old in enumerate(sorted(used_accessors))}
+
+    def remap_accessors(value):
+        return accessor_map[value]
+
+    for mesh in doc.get("meshes", []):
+        for prim in mesh["primitives"]:
+            prim["attributes"] = {k: remap_accessors(v) for k, v in prim["attributes"].items()}
+            if "indices" in prim:
+                prim["indices"] = remap_accessors(prim["indices"])
+            if "targets" in prim:
+                prim["targets"] = [{k: remap_accessors(v) for k, v in t.items()} for t in prim["targets"]]
+    for skin in doc.get("skins", []):
+        if "inverseBindMatrices" in skin:
+            skin["inverseBindMatrices"] = remap_accessors(skin["inverseBindMatrices"])
+    for animation in doc.get("animations", []):
+        for sampler in animation["samplers"]:
+            sampler["input"], sampler["output"] = remap_accessors(sampler["input"]), remap_accessors(sampler["output"])
+    doc["accessors"] = [accessors[old] for old in sorted(used_accessors)]
+
+    used_views = set()
+    for accessor in doc["accessors"]:
+        if "bufferView" in accessor:
+            used_views.add(accessor["bufferView"])
+        if "sparse" in accessor:
+            used_views.add(accessor["sparse"]["indices"]["bufferView"])
+            used_views.add(accessor["sparse"]["values"]["bufferView"])
+    for image in doc.get("images", []):
+        if "bufferView" in image:
+            used_views.add(image["bufferView"])
+    view_map, new_views, chunks, offset = {}, [], [], 0
+    for old in sorted(used_views):
+        view = dict(views[old])
+        payload = view.pop("_payload", None)
+        if payload is None:
+            start = view.get("byteOffset", 0)
+            payload = binary[start:start + view["byteLength"]]
+        padding = (4 - offset % 4) % 4
+        chunks.append(b"\x00" * padding + payload)
+        offset += padding
+        view["byteOffset"] = offset
+        offset += len(payload)
+        view_map[old] = len(new_views)
+        new_views.append(view)
+    for accessor in doc["accessors"]:
+        if "bufferView" in accessor:
+            accessor["bufferView"] = view_map[accessor["bufferView"]]
+        if "sparse" in accessor:
+            accessor["sparse"]["indices"]["bufferView"] = view_map[accessor["sparse"]["indices"]["bufferView"]]
+            accessor["sparse"]["values"]["bufferView"] = view_map[accessor["sparse"]["values"]["bufferView"]]
+    for image in doc.get("images", []):
+        if "bufferView" in image:
+            image["bufferView"] = view_map[image["bufferView"]]
+    doc["bufferViews"] = new_views
+    blob = b"".join(chunks)
+    blob += b"\x00" * ((4 - len(blob) % 4) % 4)
+    doc["buffers"] = [{"byteLength": len(blob)}]
+    _write_glb(glb_path, doc, struct.pack("<I4s", len(blob), b"BIN\x00") + blob)
+    log("morph normals: %d kept as sparse, %d dropped; binary %.2f -> %.2f MB" % (
+        kept, dropped, len(binary) / 1048576.0, len(blob) / 1048576.0))
+
+
+def verify_glb(glb_path, expect_all_keys, expect_rig=False):
     """Check the written file against the app's hard requirements; print what was found."""
     doc, rest = _read_glb(glb_path)
     problems = []
@@ -836,7 +1325,21 @@ def verify_glb(glb_path, expect_all_keys):
         problems.append("%d triangles (budget %d)" % (triangles, MAX_TRIANGLES))
     if size >= MAX_BYTES:
         problems.append("%.2f MB (budget 8 MB)" % (size / 1048576.0))
-    if doc.get("skins") or doc.get("animations"):
+    if expect_rig:
+        if len(doc.get("skins", [])) != 1:
+            problems.append("expected exactly one skin, found %d" % len(doc.get("skins", [])))
+        else:
+            joints = doc["skins"][0]["joints"]
+            names = [doc["nodes"][j].get("name", "") for j in joints]
+            log("skeleton %d joints: %s" % (len(joints), ", ".join(names)))
+        for mesh in doc.get("meshes", []):
+            for prim in mesh["primitives"]:
+                if "JOINTS_0" not in prim["attributes"] or "WEIGHTS_0" not in prim["attributes"]:
+                    problems.append("mesh %s is not skinned" % mesh.get("name"))
+        for animation in doc.get("animations", []):
+            length = max(accessors[sampler["input"]]["max"][0] for sampler in animation["samplers"])
+            log("animation %-8s %.2f s, %d channels" % (animation.get("name"), length, len(animation["channels"])))
+    elif doc.get("skins") or doc.get("animations"):
         problems.append("unexpected skins/animations in the file")
     return problems
 
@@ -1003,21 +1506,28 @@ def main():
         log("  %-12s %-62s pack=%-24s %s" % (role, fragment, pack, lic))
 
     basemesh = build_human(mpfb, preset)
-    objects = add_assets(mpfb, basemesh, preset)
+    rig = add_rig(mpfb, basemesh, preset)
+    objects = add_assets(mpfb, basemesh, preset, rig)
+    apply_rest_pose(rig, objects, preset)
     add_face_units(mpfb, basemesh, objects)
     mask_size = max(texture_size, int(preset.get("face_texture_size", texture_size)))
     uv_masks = capture_uv_masks(basemesh, preset, mask_size)
-    stage_for_export(mpfb, basemesh, objects)
+    stage_for_export(mpfb, basemesh, objects, rig)
+    build_idle_animation(rig, preset)
 
     with tempfile.TemporaryDirectory(prefix="make_character_") as work_dir:
         materials = fix_materials(objects, preset, texture_size, work_dir, uv_masks)
-        export_glb(objects, out_path)
+        export_glb(objects, out_path, rig, preset)
     patch_alpha_modes(out_path, materials)
+    if preset.get("morph_normals"):
+        slim_morph_normals(out_path)
+    if rig:
+        name_single_animation(out_path, "idle")
 
     expect = {obj.name: mpfb.ARKIT_FACEUNITS for role in MORPH_ROLES for obj in objects.get(role, [])}
     for key in REQUIRED_KEYS:
         assert key in mpfb.ARKIT_FACEUNITS, key
-    problems = verify_glb(out_path, expect)
+    problems = verify_glb(out_path, expect, expect_rig=bool(rig))
     if args.preview_dir:
         render_previews(out_path, os.path.abspath(args.preview_dir), args.kind)
     if problems:

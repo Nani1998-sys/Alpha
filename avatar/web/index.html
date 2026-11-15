@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maya avatar</title>
+<style>
+  :root { --ink: #f3f5f7; --muted: #b9c1ca; --panel: rgba(18, 22, 28, 0.62); --line: rgba(255, 255, 255, 0.14); --accent: #7fa6ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #8e97a1; color: var(--ink); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #stage { position: fixed; inset: 0; }
+  .bar { position: fixed; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center;
+         background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px; backdrop-filter: blur(14px); }
+  #top { top: 16px; flex-wrap: wrap; justify-content: center; row-gap: 6px; column-gap: 10px; width: max-content; max-width: calc(100vw - 32px); }
+  #bottom { bottom: 20px; width: min(720px, calc(100vw - 32px)); }
+  .cluster { display: flex; align-items: center; gap: 4px; }
+  .group { display: flex; gap: 2px; background: rgba(255, 255, 255, 0.06); border-radius: 9px; padding: 2px; }
+  button, select, input { font: inherit; color: var(--ink); }
+  button { background: transparent; border: 0; padding: 6px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  button:hover { background: rgba(255, 255, 255, 0.10); }
+  button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.20); }
+  button.primary { background: var(--accent); color: #0d1320; font-weight: 600; padding: 9px 18px; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  label { color: var(--muted); font-size: 12px; padding: 0 4px 0 8px; }
+  input[type="text"] { flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; }
+  input::placeholder { color: var(--muted); }
+  #note { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); max-width: min(720px, calc(100vw - 32px));
+          color: #10151c; background: rgba(255, 255, 255, 0.72); border-radius: 10px; padding: 6px 12px; font-size: 13px; text-align: center; }
+  #note:empty { display: none; }
+</style>
+<!-- three.js from a CDN. To self-host, point these two entries at your own copy. -->
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage" aria-label="3D avatar"></div>
+
+<div class="bar" id="top">
+  <div class="cluster"><label>View</label>
+  <div class="group" id="framing">
+    <button data-value="full">Full length</button>
+    <button data-value="medium" aria-pressed="true">Waist up</button>
+    <button data-value="closeup">Close-up</button>
+  </div></div>
+  <div class="cluster"><label>Mood</label>
+  <div class="group" id="mood">
+    <button data-value="neutral" aria-pressed="true">Neutral</button>
+    <button data-value="happy">Warm</button>
+    <button data-value="concerned">Concerned</button>
+  </div></div>
+  <div class="cluster"><label>State</label>
+  <div class="group" id="state">
+    <button data-value="idle" aria-pressed="true">Idle</button>
+    <button data-value="listening">Listening</button>
+    <button data-value="thinking">Thinking</button>
+  </div></div>
+</div>
+
+<div id="note" role="status"></div>
+<form class="bar" id="bottom">
+  <input id="text" type="text" autocomplete="off" aria-label="Text to speak"
+         value="Hello, I'm Maya. Ask me anything and I'll find the answer for you.">
+  <button class="primary" type="submit">Speak</button>
+</form>
+
+<script type="module">
+import { AvatarStage } from './avatar-runtime.js';
+import { guessVisemes } from './demo-visemes.js';
+
+const params = new URLSearchParams(location.search);
+const note = document.getElementById('note');
+const stage = new AvatarStage(document.getElementById('stage'), {
+  background: params.get('bg') || 'studio',
+  framing: params.get('framing') || 'medium',
+  followPointer: params.get('pointer') !== '0',
+  orbit: Number(params.get('orbit') || 0),
+  onState: (state) => press('state', state),
+});
+window.stage = stage;                                    // handy in the console
+
+// Frame the character between the toolbar and the text box.
+function updateInsets() {
+  const top = document.getElementById('top').getBoundingClientRect();
+  const bottom = document.getElementById('bottom').getBoundingClientRect();
+  stage.setInsets({ top: top.bottom + 8, bottom: innerHeight - bottom.top + 8 });
+}
+updateInsets();
+addEventListener('resize', updateInsets);
+
+function press(groupId, value) {
+  for (const button of document.querySelectorAll(`#${groupId} button`)) {
+    button.setAttribute('aria-pressed', String(button.dataset.value === value));
+  }
+}
+function wire(groupId, apply) {
+  document.getElementById(groupId).addEventListener('click', (event) => {
+    const value = event.target.dataset && event.target.dataset.value;
+    if (!value) return;
+    press(groupId, value);
+    apply(value);
+  });
+}
+wire('framing', (value) => stage.setFraming(value));
+wire('mood', (value) => stage.setMood(value));
+wire('state', (value) => stage.setState(value));
+press('framing', params.get('framing') || 'medium');
+
+// POST {text} to your Polly endpoint; expects {audio: base64 mp3, marks: [speech marks]}.
+// See server/polly_server.py. Without an endpoint the demo mouths the words silently.
+const ttsUrl = params.get('tts') || '/api/tts';
+async function fetchSpeech(text) {
+  const response = await fetch(ttsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+  if (!response.ok) throw new Error('TTS endpoint answered ' + response.status);
+  const data = await response.json();
+  const bytes = Uint8Array.from(atob(data.audio), (c) => c.charCodeAt(0));
+  return { audio: new Blob([bytes], { type: 'audio/mpeg' }), visemes: data.marks };
+}
+
+document.getElementById('bottom').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const text = document.getElementById('text').value.trim();
+  if (!text) return;
+  stage.setState('thinking');
+  let line;
+  try {
+    line = await fetchSpeech(text);
+    note.textContent = '';
+  } catch (error) {
+    line = { visemes: guessVisemes(text) };
+    note.textContent = 'No Polly endpoint at ' + ttsUrl + ' - mouthing the words silently with estimated timing.';
+  }
+  await stage.speak(line);
+});
+
+try {
+  await stage.load(params.get('model') || '../out/maya_pro.glb');
+  document.title = 'Maya avatar - ready';
+} catch (error) {
+  note.textContent = 'Could not load the character: ' + error.message;
+  document.title = 'Maya avatar - load failed';
+  throw error;
+}
+</script>
+</body>
+</html>
