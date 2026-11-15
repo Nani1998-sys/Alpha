@@ -120,7 +120,9 @@ Everything about the look lives in the `PRESETS` entry:
 - **Shading detail:** `morph_normals` (lip and lid shading while talking, stored sparse on the
   body only)
 
-Add new characters as new entries; `maya` is left as it was.
+Add new characters as new entries; `maya` is left as it was. `maya_pro_soft` keeps the
+previous, softer and sweeter face (`FACE_REFINED`, lighter make-up) with everything else the
+same: build it with `--kind maya_pro_soft` if you prefer that look.
 
 ### Assets in `maya_pro` (all CC0)
 
@@ -135,9 +137,11 @@ Add new characters as new entries; `maya` is left as it was.
 | Skeleton | MPFB `mixamo` rig (works with Mixamo animations) | MPFB |
 | Face units | 52 ARKit targets | faceunits01 |
 
-The face is `FACE_REFINED` in the script: an oval head with a softly tapered jaw and chin, high
-cheekbones, larger almond eyes with lifted outer corners, a slim straight nose with a refined
-tip, full lips with a defined cupid's bow, and a longer neck. The body macros make her late
+The face is `FACE_STRIKING` in the script, built on `FACE_REFINED`: a slim oval head with a
+defined, tapered jaw and chin, strong cheekbones with a slight hollow below them, lifted almond
+eyes, level brows set a little lower, a straight nose with a refined tip, full lips with a
+sharp cupid's bow, and a longer neck. Make-up adds light contour under the cheekbones, a
+highlight on top of them, and a stronger lash line. The body macros make her late
 20s and slim (`age` 0.50, `weight` 0.42, `muscle` 0.34, `proportions` 0.78). It is a generic
 face, not the likeness of any real person.
 

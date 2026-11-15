@@ -154,6 +154,20 @@ FACE_REFINED = {
     "lr-ear-scale-decr": 0.20,
 }
 
+# More striking, still professional: stronger cheekbones with a slight hollow below, a defined
+# (not wider) jaw and chin, more lifted almond eyes, level brows set a little lower, a straighter
+# nose with more projection, sharper lip line, composed rather than sweet. Generic face.
+FACE_STRIKING = dict(FACE_REFINED, **{
+    "head-oval": 0.45, "head-invertedtriangular": 0.28, "head-scale-horiz-decr": 0.15,
+    "chin-width-decr": 0.42, "chin-bones-decr": 0.25, "chin-prominent-incr": 0.22, "chin-triangle": 0.25,
+    "lr-cheek-bones-incr": 0.55, "lr-cheek-inner-decr": 0.35, "lr-cheek-volume-decr": 0.30, "lr-cheek-trans-up": 0.20,
+    "forehead-temple-decr": 0.15,
+    "lr-eye-scale-incr": 0.12, "lr-eye-corner2-up": 0.30, "lr-eye-height2-incr": 0.0, "lr-eye-height2-decr": 0.04,
+    "eyebrows-angle-up": 0.18, "eyebrows-trans-up": 0.0, "eyebrows-trans-down": 0.06,
+    "nose-scale-depth-incr": 0.10, "nose-hump-decr": 0.40,
+    "mouth-cupidsbow-incr": 0.50, "mouth-angles-up": 0.14,
+})
+
 PRESETS["maya_pro"] = dict(PRESETS["maya"])
 PRESETS["maya_pro"].update({
     # Late 20s, slim, refined: soft V-shaped jaw, high cheekbones, slim straight nose,
@@ -199,6 +213,24 @@ PRESETS["maya_pro"].update({
     "lips": {"color": (0.92, 0.62, 0.62), "strength": 0.65},
     "eyebrows": "eyebrow001/eyebrow001.mhclo",                                       # system
     "brow_grade": {"gain": (0.36, 0.29, 0.25), "saturation": 0.6, "gamma": 1.0},
+})
+
+# The softer, sweeter face from the previous revision, kept as its own preset.
+PRESETS["maya_pro_soft"] = dict(PRESETS["maya_pro"])
+
+PRESETS["maya_pro"] = dict(PRESETS["maya_pro_soft"])
+PRESETS["maya_pro"].update({
+    "targets": FACE_STRIKING,
+    "makeup": {
+        "concealer": {"strength": 0.35},
+        "contour": {"color": (0.84, 0.78, 0.76), "strength": 0.55},
+        "highlight": {"strength": 0.30},
+        "blush": {"color": (1.0, 0.82, 0.80), "strength": 0.40},
+        "eyeshadow": {"color": (0.74, 0.66, 0.66), "strength": 0.45},
+        "eyeliner": {"color": (0.05, 0.035, 0.035), "strength": 0.90},
+    },
+    "lips": {"color": (0.84, 0.54, 0.56), "strength": 0.70},
+    "brow_grade": {"gain": (0.30, 0.24, 0.21), "saturation": 0.6, "gamma": 1.0},
     "eyelashes": "eyelashes02/eyelashes02.mhclo",                                    # system
     "eye_grade": {"gain": (0.84, 0.76, 0.68), "saturation": 0.72, "gamma": 1.12},
     "morph_normals": True,
@@ -895,7 +927,7 @@ def _makeup_masks(basemesh, size):
             edge_faces[key] = edge_faces.get(key, 0) + 1
     rim = np.array(sorted({v for key, n in edge_faces.items() if n == 1 for v in key}), dtype=np.int64)
 
-    weights = {name: np.zeros(len(co)) for name in ("blush", "eyeshadow", "eyeliner", "concealer")}
+    weights = {name: np.zeros(len(co)) for name in ("blush", "eyeshadow", "eyeliner", "concealer", "contour", "highlight")}
     for centre, radius in eyes:
         d = np.linalg.norm(co - centre, axis=1)
         near = body & (d < radius * 3.2) & (co[:, 1] < centre[1] + radius * 0.6)
@@ -924,6 +956,26 @@ def _makeup_masks(basemesh, size):
             blush = np.exp(-np.sum((co - surface) ** 2, axis=1) / (2.0 * (ipd * 0.26) ** 2))
             blush *= co[:, 1] < surface[1] + ipd * 0.5
             weights["blush"] = np.maximum(weights["blush"], np.where(body, blush, 0.0))
+
+        # Contour: a soft shadow in the hollow under the cheekbone, running back towards the ear.
+        # Highlight: the top of the cheekbone, just below the outer corner of the eye.
+        def on_surface(point, reach):
+            lane = body & (np.abs(co[:, 0] - point[0]) < reach) & (np.abs(co[:, 2] - point[2]) < reach)
+            if not lane.any():
+                return None
+            return co[np.where(lane)[0][np.argmin(co[lane, 1])]]
+
+        hollow = centre + np.array([outward * ipd * 0.42, 0.0, -(centre[2] - mouth[2]) * 0.62])
+        top = centre + np.array([outward * ipd * 0.26, 0.0, -(centre[2] - mouth[2]) * 0.26])
+        for name, point, sigma, stretch in (("contour", hollow, 0.20, 1.8), ("highlight", top, 0.13, 1.6)):
+            spot = on_surface(point, ipd * 0.10)
+            if spot is None:
+                continue
+            delta = co - spot
+            # stretched along the cheekbone (outward and back), narrow vertically
+            dist = (delta[:, 0] / stretch) ** 2 + (delta[:, 1] / stretch) ** 2 + delta[:, 2] ** 2
+            value = np.exp(-dist / (2.0 * (ipd * sigma) ** 2)) * (co[:, 1] < spot[1] + ipd * 0.7)
+            weights[name] = np.maximum(weights[name], np.where(body, value, 0.0))
 
     feather = max(1, size // 1024)
     return {"makeup_" + name: _uv_vertex_mask(basemesh, w, size, size, body, feather) for name, w in weights.items()}
@@ -1003,12 +1055,14 @@ def _apply_makeup(pixels, masks, makeup):
         return m[..., None]
 
     rgb = pixels[..., :3]
-    for name in ("concealer", "blush", "eyeshadow"):
+    for name in ("concealer", "contour", "highlight", "blush", "eyeshadow"):
         spec, m = makeup.get(name), mask(name)
         if not spec or m is None:
             continue
         amount = m * float(spec.get("strength", 0.3))
-        if name == "concealer":
+        if name == "highlight":
+            rgb = rgb * (1.0 - amount) + np.clip(rgb * 1.15 + 0.03, 0, 1) * amount
+        elif name == "concealer":
             luma = (rgb * np.array([0.299, 0.587, 0.114], dtype=np.float32)).sum(axis=-1, keepdims=True)
             lifted = luma + (rgb - luma) * 0.85
             rgb = rgb * (1.0 - amount) + np.clip(lifted * 1.18, 0, 1) * amount

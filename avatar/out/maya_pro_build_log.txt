@@ -21,7 +21,7 @@
 [make_character] added clothes shoes04/shoes04.mhclo tris=3320
 [make_character] idle animation: 240 frames at 30 fps, 16 bones
 [make_character] removed 490 transparent faces from eyes
-[make_character] morph normals: 52 kept as sparse, 260 dropped; binary 7.78 -> 5.42 MB
+[make_character] morph normals: 52 kept as sparse, 260 dropped; binary 7.78 -> 5.41 MB
 [make_character] shape keys per exported mesh:
 [make_character]   body       tris=17218  keys=52 browDownLeft, browDownRight, browInnerUp, browOuterUpLeft, browOuterUpRight, cheekPuff, cheekSquintLeft, cheekSquintRight, eyeBlinkLeft, eyeBlinkRight, eyeLookDownLeft, eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight, eyeLookUpLeft, eyeLookUpRight, eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, jawForward, jawLeft, jawOpen, jawRight, mouthClose, mouthDimpleLeft, mouthDimpleRight, mouthFrownLeft, mouthFrownRight, mouthFunnel, mouthLeft, mouthLowerDownLeft, mouthLowerDownRight, mouthPressLeft, mouthPressRight, mouthPucker, mouthRight, mouthRollLower, mouthRollUpper, mouthShrugLower, mouthShrugUpper, mouthSmileLeft, mouthSmileRight, mouthStretchLeft, mouthStretchRight, mouthUpperUpLeft, mouthUpperUpRight, noseSneerLeft, noseSneerRight, tongueOut
 [make_character]   clothes    tris=4192   keys=0 
@@ -44,20 +44,20 @@
 [make_character]   tongue     OPAQUE cutoff=- doubleSided=False
 [make_character] images:
 [make_character]   skin_normal        image/jpeg 2048x2048   231.7 kB
-[make_character]   skin_color         image/jpeg 2048x2048   265.8 kB
+[make_character]   skin_color         image/jpeg 2048x2048   266.2 kB
 [make_character]   skin_roughness     image/jpeg 1024x1024    17.8 kB
 [make_character]   clothes_normal     image/jpeg 1024x1024    71.2 kB
 [make_character]   clothes_color      image/jpeg 1024x1024    37.6 kB
 [make_character]   clothes2_normal    image/jpeg 1024x1024   181.1 kB
 [make_character]   clothes2_color     image/jpeg 1024x1024   117.9 kB
-[make_character]   eyebrows_color     image/png   512x512    105.6 kB
-[make_character]   eyelashes_color    image/png   512x512    155.8 kB
+[make_character]   eyebrows_color     image/png   512x512    100.6 kB
+[make_character]   eyelashes_color    image/png   512x512    150.7 kB
 [make_character]   eyes_color         image/jpeg 1024x1024    58.0 kB
 [make_character]   hair_normal        image/jpeg 1024x1024   190.2 kB
 [make_character]   hair_color         image/png  1024x1024  1159.3 kB
 [make_character]   teeth_color        image/jpeg 1024x1024   136.2 kB
 [make_character]   tongue_color       image/jpeg 1024x1024    45.1 kB
-[make_character] bounds  x -0.248..0.244  y -0.000..1.735  z -0.105..0.207   height 1.735 m
+[make_character] bounds  x -0.248..0.244  y -0.000..1.734  z -0.105..0.207   height 1.734 m
 [make_character] totals  38146 triangles, 5.53 MB, 9 meshes, 9 materials, 14 images
 [make_character] skeleton 52 joints: mixamorig:Hips, mixamorig:LeftUpLeg, mixamorig:LeftLeg, mixamorig:LeftFoot, mixamorig:LeftToeBase, mixamorig:RightUpLeg, mixamorig:RightLeg, mixamorig:RightFoot, mixamorig:RightToeBase, mixamorig:Spine, mixamorig:Spine1, mixamorig:Spine2, mixamorig:LeftShoulder, mixamorig:LeftArm, mixamorig:LeftForeArm, mixamorig:LeftHand, mixamorig:LeftHandIndex1, mixamorig:LeftHandIndex2, mixamorig:LeftHandIndex3, mixamorig:LeftHandMiddle1, mixamorig:LeftHandMiddle2, mixamorig:LeftHandMiddle3, mixamorig:LeftHandPinky1, mixamorig:LeftHandPinky2, mixamorig:LeftHandPinky3, mixamorig:LeftHandRing1, mixamorig:LeftHandRing2, mixamorig:LeftHandRing3, mixamorig:LeftHandThumb1, mixamorig:LeftHandThumb2, mixamorig:LeftHandThumb3, mixamorig:Neck, mixamorig:Head, mixamorig:RightShoulder, mixamorig:RightArm, mixamorig:RightForeArm, mixamorig:RightHand, mixamorig:RightHandIndex1, mixamorig:RightHandIndex2, mixamorig:RightHandIndex3, mixamorig:RightHandMiddle1, mixamorig:RightHandMiddle2, mixamorig:RightHandMiddle3, mixamorig:RightHandPinky1, mixamorig:RightHandPinky2, mixamorig:RightHandPinky3, mixamorig:RightHandRing1, mixamorig:RightHandRing2, mixamorig:RightHandRing3, mixamorig:RightHandThumb1, mixamorig:RightHandThumb2, mixamorig:RightHandThumb3
 [make_character] animation idle     8.00 s, 16 channels
