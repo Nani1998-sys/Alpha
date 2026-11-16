@@ -99,6 +99,13 @@ class PKResult:
     conc: np.ndarray              # plasma concentration (central), C = A_central / Vc
     amounts: np.ndarray           # shape (3, N): depot, central, peripheral amounts
     auc: np.ndarray               # exact cumulative AUC from 0 to t
+    dose_delivered: float         # drug actually introduced within [0, t_end),
+                                  # after bioavailability. The window is
+                                  # half-open: a dose scheduled exactly at
+                                  # t_end is not given, because the simulation
+                                  # stops there and it could not act. The
+                                  # unfinished part of an infusion is likewise
+                                  # not counted.
     dose_times: List[float]
     pk: PKParameters
     regimen: DosingRegimen
@@ -174,6 +181,7 @@ def simulate_pk(
     aug = np.array([0.0, 0.0, 0.0, 0.0, 1.0])  # dep, cen, per, auc, 1
     t_parts: List[np.ndarray] = []
     y_parts: List[np.ndarray] = []
+    delivered = 0.0            # systemic input actually administered, for AUC_inf
 
     for i in range(len(breakpoints) - 1):
         t0, t1 = breakpoints[i], breakpoints[i + 1]
@@ -181,11 +189,13 @@ def simulate_pk(
         for te, comp, amt in bolus_events:           # instantaneous doses at t0
             if abs(te - t0) < 1e-9:
                 aug[comp] += amt
+                delivered += amt
                 jump = jump or comp == 1             # central bolus: C jumps
         npts = max(3, int(round(n_points * (t1 - t0) / t_end)) + 2)
         teval = np.linspace(t0, t1, npts)
         h = (t1 - t0) / (npts - 1)
         rate = inf_rate_at((t0 + t1) / 2.0)
+        delivered += rate * (t1 - t0)                # only the part infused so far
         phi = _expm(_system_matrix(k10, k12, k21, ka, rate, pk.Vc) * h)
         phi[4] = (0.0, 0.0, 0.0, 0.0, 1.0)  # constant-input row is exactly e5
         seg = np.empty((4, npts))
@@ -209,5 +219,5 @@ def simulate_pk(
 
     return PKResult(
         t=t, conc=conc, amounts=amounts, auc=states[3],
-        dose_times=dose_times, pk=pk, regimen=regimen,
+        dose_delivered=delivered, dose_times=dose_times, pk=pk, regimen=regimen,
     )

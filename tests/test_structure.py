@@ -134,3 +134,28 @@ def test_cache_is_used_without_network(tmp_path):
     s = fetch_pdb("1ABC", cache_dir=str(tmp_path), with_metadata=False)
     assert s.identifier == "1ABC"
     assert len(s.atoms) > 400
+
+
+# --- Bug: an NMR file whose first model is not numbered 1 lost every atom ---
+def test_first_model_is_kept_whatever_its_number():
+    pdb = ("MODEL        5\n"
+           "ATOM      1  CA  ALA A   1      10.000  10.000  10.000  1.00 20.00           C\n"
+           "ENDMDL\n"
+           "MODEL        6\n"
+           "ATOM      2  CA  GLY A   2      20.000  20.000  20.000  1.00 20.00           C\n"
+           "ENDMDL\n")
+    s = parse_pdb(pdb)
+    assert len(s.atoms) == 1
+    assert s.atoms[0].resname == "ALA"
+
+
+# --- Bug: a ligand with no heavy atoms crashed with a bare ValueError -------
+def test_ligand_without_heavy_atoms_gives_a_clear_error():
+    pdb = ("ATOM      1  CA  ALA A   1      10.000  10.000  10.000  1.00 20.00           C\n"
+           "HETATM    2  H1  XXX A 900      11.000  11.000  11.000  1.00 20.00           H\n")
+    s = parse_pdb(pdb)
+    lig = s.ligands(min_heavy_atoms=0)[0]
+    with pytest.raises(StructureError, match="no heavy atoms"):
+        s.pocket_residues(lig)
+    with pytest.raises(StructureError, match="no heavy atoms"):
+        s.bridging_waters(lig)

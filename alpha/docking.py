@@ -33,6 +33,7 @@ import math
 import os
 import shutil
 import subprocess
+import warnings
 import tempfile
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -380,15 +381,27 @@ def dock(
 
 
 def _poses_to_mols(pdbqt_path: str):
-    """Rebuild docked poses as an RDKit molecule with one conformer per pose."""
+    """Rebuild docked poses as an RDKit molecule with one conformer per pose.
+
+    Returns None if the poses cannot be rebuilt, in which case the scores are
+    still reported but the 3D geometry and contact lists are not. That is a
+    degraded result, so it warns rather than failing silently.
+    """
     try:
         from meeko import PDBQTMolecule, RDKitMolCreate
         from rdkit import Chem
 
         pm = PDBQTMolecule.from_file(pdbqt_path, skip_typing=True)
         mols = RDKitMolCreate.from_pdbqt_mol(pm)
-        return Chem.RemoveHs(mols[0]) if mols and mols[0] is not None else None
-    except Exception:
+        if mols and mols[0] is not None:
+            return Chem.RemoveHs(mols[0])
+        raise ValueError("Meeko returned no molecule for the docked poses")
+    except Exception as exc:
+        warnings.warn(
+            f"Docking scores were obtained, but the poses could not be rebuilt "
+            f"as molecules ({type(exc).__name__}: {exc}). Pose coordinates and "
+            "contact residues are unavailable for this run.",
+            RuntimeWarning, stacklevel=2)
         return None
 
 

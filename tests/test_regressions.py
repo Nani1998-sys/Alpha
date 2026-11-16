@@ -130,3 +130,51 @@ def test_time_of_peak_effect_for_inhibitory_model():
     assert res.metrics["time_of_peak_effect"] == pytest.approx(
         res.t[int(np.argmin(res.effect))], rel=1e-5)
     assert res.metrics["time_of_peak_effect"] > 0
+
+
+# --- Bug: AUC_inf counted the whole regimen, not what was actually given ----
+def test_auc_inf_ignores_doses_scheduled_after_the_window():
+    """10 doses q24h simulated for only 48 h.
+
+    The dosing window is half-open: doses land at 0 and 24 h, while the one
+    at exactly 48 h is not given because the simulation stops there. So two
+    doses are delivered, not ten.
+    """
+    pk = PKParameters(CL=10, Vc=20)
+    r = simulate_pk(pk, DosingRegimen(dose=100, route="iv_bolus", interval=24, n_doses=10),
+                    t_end=48)
+    assert r.dose_delivered == pytest.approx(200.0)
+    assert compute_nca(r)["AUC_inf"] == pytest.approx(200.0 / 10, rel=1e-6)
+    # a window that does include the third dose picks it up
+    r2 = simulate_pk(pk, DosingRegimen(dose=100, route="iv_bolus", interval=24, n_doses=10),
+                     t_end=49)
+    assert r2.dose_delivered == pytest.approx(300.0)
+
+
+def test_auc_inf_ignores_a_dose_whose_lag_falls_outside_the_window():
+    pk = PKParameters(CL=10, Vc=20, ka=1.0, F=0.5, tlag=30)
+    r = simulate_pk(pk, DosingRegimen(dose=100), t_end=10)
+    assert r.dose_delivered == 0.0
+    assert compute_nca(r)["AUC_inf"] == 0.0
+
+
+def test_auc_inf_counts_only_the_infused_part():
+    """Half of a 10 h infusion has run at t = 5 h."""
+    r = simulate_pk(PKParameters(CL=5, Vc=25),
+                    DosingRegimen(dose=100, route="iv_infusion", infusion_duration=10),
+                    t_end=5)
+    assert r.dose_delivered == pytest.approx(50.0)
+    assert compute_nca(r)["AUC_inf"] == pytest.approx(10.0, rel=1e-6)
+
+
+@pytest.mark.parametrize("route,extra", [
+    ("iv_bolus", {}),
+    ("oral", {"ka": 1.0, "F": 0.5}),
+])
+def test_auc_inf_still_exact_for_a_completed_single_dose(route, extra):
+    pk = PKParameters(CL=10, Vc=20, **extra)
+    r = simulate_pk(pk, DosingRegimen(dose=100, route=route), t_end=400)
+    f = extra.get("F", 1.0)
+    assert compute_nca(r)["AUC_inf"] == pytest.approx(f * 100 / 10, rel=1e-6)
+    # and it must match the curve's own integral, since the drug is all gone
+    assert compute_nca(r)["AUC_inf"] == pytest.approx(r.auc[-1], rel=1e-3)

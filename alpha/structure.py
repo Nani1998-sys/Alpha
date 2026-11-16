@@ -274,6 +274,9 @@ class ProteinStructure:
         r2 = radius * radius
         best: Dict[Tuple[str, int, str, str], float] = {}
         lig_xyz = [(a.x, a.y, a.z) for a in ligand.atoms if a.element not in ("H", "D")]
+        if not lig_xyz:
+            raise StructureError(
+                f"Ligand {ligand.label} has no heavy atoms, so it has no pocket")
         for a in self.atoms:
             if a.hetatm or a.element == "H" or a.resname in SOLVENT:
                 continue
@@ -327,7 +330,9 @@ class ProteinStructure:
         """
         lig_xyz = [(a.x, a.y, a.z) for a in ligand.atoms if a.element not in ("H", "D")]
         if not lig_xyz:
-            return []
+            raise StructureError(
+                f"Ligand {ligand.label} has no heavy atoms, so it has no "
+                "surrounding waters to find")
         prot = [a for a in self.atoms
                 if not a.hetatm and a.element in ("N", "O")]
         out = []
@@ -372,16 +377,22 @@ def parse_pdb(text: str, identifier: str = "structure",
     title_parts: List[str] = []
     method = ""
     resolution = None
+    models_seen = 0
     in_later_model = False
     seen_altloc: Dict[Tuple[str, int, str, str], str] = {}
 
     for line in text.splitlines(keepends=True):
         rec = line[:6]
         if rec == "MODEL ":
-            in_later_model = line.split()[1].strip() != "1" if len(line.split()) > 1 else False
+            # Keep the first model in the file; an NMR ensemble numbers its
+            # models arbitrarily, so count them rather than trust the label.
+            # Atoms written before any MODEL record are a model in their own
+            # right, so a MODEL that follows them starts a later one.
+            models_seen += 1
+            in_later_model = models_seen > 1 or bool(atoms)
             continue
         if rec == "ENDMDL":
-            in_later_model = True
+            in_later_model = models_seen >= 1
             continue
         if rec == "TITLE ":
             title_parts.append(line[10:].strip())
@@ -529,12 +540,18 @@ def search_pdb(query: str, limit: int = 10) -> List[Dict[str, object]]:
         headers={"Content-Type": "application/json", "User-Agent": "alpha-pkpd/0.2"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            body = json.loads(resp.read())
+            raw = resp.read()
     except urllib.error.HTTPError as exc:
-        if exc.code == 204:
+        if exc.code == 204:          # the API's "no matches" response
             return []
         raise StructureError(f"PDB search failed: HTTP {exc.code}") from exc
     except Exception as exc:
         raise StructureError(f"PDB search failed: {exc}") from exc
+    if not raw.strip():              # 200 with an empty body also means no hits
+        return []
+    try:
+        body = json.loads(raw)
+    except ValueError as exc:
+        raise StructureError(f"PDB search returned malformed JSON: {exc}") from exc
     return [{"pdb_id": r["identifier"], "score": round(r.get("score", 0.0), 3)}
             for r in body.get("result_set", [])]

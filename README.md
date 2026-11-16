@@ -249,10 +249,14 @@ pip install pytest
 python -m pytest -q
 ```
 
-138 tests: analytical validation of the PK engine, PD models, the SMILES parser
+145 tests: analytical validation of the PK engine, PD models, the SMILES parser
 (checked against RDKit on 47 real drugs, plus 17 malformed inputs it must
 reject), structure parsing and pocket detection, docking maths and the 3D
 viewers, the drug registry and the command line.
+
+AUC(0–∞) is computed by mass balance from the drug actually delivered inside
+the simulated window, so doses scheduled after `t_end` and the unfinished part
+of an infusion do not inflate it.
 
 The redocking validation actually runs AutoDock Vina and takes about a minute,
 so it is marked `slow` and excluded by default:

@@ -80,10 +80,13 @@ def compute_nca(pk_result: PKResult) -> Dict[str, Any]:
     """Exposure metrics for a simulated concentration-time course.
 
     Cmax/Tmax and AUC are read from the exact simulation. AUC_inf uses the
-    mass-balance identity AUC(0-inf) = F*Dose_total / CL, exact for linear
-    PK. ``terminal_half_life`` is the data-driven (NCA-style) estimate from
-    the terminal slope; ``model_half_life`` is the exact value from the
-    parameters (ln2/beta for two compartments, ln2/k10 for one).
+    mass-balance identity AUC(0-inf) = (drug delivered) / CL, exact for
+    linear PK, and counts only what was actually administered inside the
+    simulated window - doses scheduled after ``t_end``, and the unfinished
+    part of an infusion, do not contribute. ``terminal_half_life`` is the
+    data-driven (NCA-style) estimate from the terminal slope;
+    ``model_half_life`` is the exact value from the parameters (ln2/beta for
+    two compartments, ln2/k10 for one).
     """
     t, c = pk_result.t, pk_result.conc
     pk, reg = pk_result.pk, pk_result.regimen
@@ -96,7 +99,7 @@ def compute_nca(pk_result: PKResult) -> Dict[str, Any]:
         "C_last": _sig(c[-1]),
     }
     f_sys = pk.F if reg.route == "oral" else 1.0
-    metrics["AUC_inf"] = _sig(f_sys * reg.dose * reg.n_doses / pk.CL)
+    metrics["AUC_inf"] = _sig(pk_result.dose_delivered / pk.CL)
 
     kel = _terminal_kel(t, c)
     if kel:
